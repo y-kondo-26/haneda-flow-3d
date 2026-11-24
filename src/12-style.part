@@ -104,4 +104,10 @@ table.kpi td.d.good { color: var(--good); } table.kpi td.d.bad { color: var(--ba
 #boot { position: absolute; inset: 0; display: grid; place-items: center; background: var(--s-sky); color: var(--ink-2); font-size: 12px; z-index: 5; padding: 0 24px; text-align: center; }
 #bootTrack { height: 3px; background: var(--line); margin: 10px auto 0; width: min(280px, 100%); overflow: hidden; }
 #bootBar { display: block; height: 100%; background: var(--ink); transform: scaleX(0); transform-origin: left; }
+/* ---- スマホ用の部品（PC では出さない）と、タッチ端末向けの土台 ---- */
+#miniBar, #drawerBtn, #sheetHandle, #peek, #note2, #hlChip { display: none; }
+html { box-sizing: border-box; background: linear-gradient(var(--s-sky) 50%, var(--surface) 50%); overscroll-behavior: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { overscroll-behavior: none; }
+button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+#stageWrap, .bar, #tabs, #modeSwitch, #miniBar, #sheetHandle { -webkit-user-select: none; user-select: none; }
 </style>

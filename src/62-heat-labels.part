@@ -74,6 +74,7 @@ function updateLabelVisibility() {
     const bw = (L.w || L.el.textContent.length * 6.5 + 14) + 6, bh = (L.h || 32) + 4, x0 = sx - bw / 2, y0 = sy - bh;
     let hit = false; for (const k of _kept) if (x0 < k[2] && x0 + bw > k[0] && y0 < k[3] && y0 + bh > k[1]) { hit = true; break; }
     if (hit) continue; _kept.push([x0, y0, x0 + bw, y0 + bh]); L.want = true;
+    if (narrow && _kept.length >= (mqLand.matches ? 5 : 4)) break;      // 狭い画面では同時に出す数を絞る
   }
   for (const L of labels) if (L.tier > 0 && L.o.visible !== L.want) L.o.visible = L.want;
 }
@@ -81,7 +82,8 @@ function updateLiveLabels(sim, world) {
   const t = sim.t;
   for (let c = 0; c < 3; c++) {
     const cp = sim.cp[c], open = Math.min(cp.open, cp.limit), w = cp.q.length * P.secSvcMean / Math.max(0.5, open);
-    setLive('cp' + c, `レーン ${open}/${LAY.cpLanes}・待ち ${cp.q.length} 人（約 ${Math.round(w)} 分）`, cp.limit < 99 ? 'down' : w >= 8 ? 'alert' : '');
+    // 狭い画面では短く書く（例「待ち 70 人・7 分」）
+    setLive('cp' + c, isNarrow.matches ? `待ち ${cp.q.length} 人・${Math.round(w)} 分` : `レーン ${open}/${LAY.cpLanes}・待ち ${cp.q.length} 人（約 ${Math.round(w)} 分）`, cp.limit < 99 ? 'down' : w >= 8 ? 'alert' : '');
   }
   for (let i = 0; i < 6; i++) setLive('isl' + i, sim.isl[i].q.length ? `待ち ${sim.isl[i].q.length} 人` : '');
   for (let l = 0; l < 3; l++) { const e = sim.eds[l], down = sim.scn.edsDown === l; setLive('eds' + l, down ? `停止中・滞留 ${e.q.length} 個` : `待ち ${e.q.length} 個`, down ? 'down' : e.q.length > 30 ? 'alert' : ''); }
@@ -131,7 +133,7 @@ function updateTrack(sim) {
     trackBag = pick; if (pick) { trackUid = pick.uid; trackText = ''; }
   }
   // 全景では出さない（床の下の 1 個を指しても分かりにくいため）。近づくか、上階を透かしたときに出す
-  const b = trackBag; trackObj.visible = !!b && labelsOn && (upperGhostTarget > 0.5 || camera.position.distanceTo(controls.target) < (isNarrow.matches ? 200 : 320));
+  const b = trackBag; trackObj.visible = !!b && labelsOn && (upperGhostTarget > 0.5 || (!isNarrow.matches && camera.position.distanceTo(controls.target) < 320));      // 狭い画面では、上階を透かしたときだけ出す
   if (!b) return;
   b.sim = sim; trackObj.position.set(b.x, b.y + 0.6, b.z);
   const txt = `${b.f.code} 便（${hhmm(b.f.dep)} 発）・${b.missed ? '出発に間に合わず、次の便へ振替' : bagStatus(b, sim)}`;

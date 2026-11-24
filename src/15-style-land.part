@@ -1,0 +1,23 @@
+<style>
+/* ==== 横向きのスマホ（高さ 500px 以下）: 3D を全面に出し、指標は右から引き出すパネルにする ==== */
+@media (max-height: 500px) and (max-width: 1000px) and (orientation: landscape) {
+  #stageWrap { position: absolute; inset: 0; }
+  #topBar { right: calc(max(8px, env(safe-area-inset-right, 0px)) + 84px); }      /* 右端は「指標」ボタンの場所 */
+  #modeSwitch { flex: 0 1 236px; }
+  #hlChip { display: block; flex: 1; min-width: 0; margin: 0; padding: 0 10px; line-height: 44px; background: var(--glass); border: 1px solid var(--line); font-size: 12.5px; font-weight: 700;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: none; }
+  #hlChip em { font-style: normal; font-family: var(--font-num); font-size: 17px; margin-left: 6px; }
+  #hlChip em.good { color: var(--good); } #hlChip em.bad { color: var(--bad); }
+  #app.drawer-open #hlChip { visibility: hidden; }
+  #drawerBtn { display: block; position: absolute; top: 6px; right: max(8px, env(safe-area-inset-right, 0px)); z-index: 7; width: 78px; min-height: 44px; padding: 0 8px;
+    background: var(--plate); color: var(--plate-ink); font-weight: 700; font-size: 13px; }
+  #panel { position: absolute; top: 0; right: 0; bottom: 0; width: min(400px, 58%); padding-top: 56px; border-left: 1px solid var(--line); box-shadow: -8px 0 22px rgba(10, 20, 30, .16);
+    transform: translateX(102%); visibility: hidden; transition: transform .26s cubic-bezier(.2, .8, .2, 1), visibility 0s .26s; }
+  #panel.open { transform: none; visibility: visible; transition: transform .26s cubic-bezier(.2, .8, .2, 1); }
+  #tabs { padding: 0 max(12px, env(safe-area-inset-right, 0px)) 0 12px; }
+  #panelBody { padding: 10px max(16px, env(safe-area-inset-right, 0px)) 14px 16px; }
+  .chart canvas { height: 112px; }
+  #caption { right: auto; width: min(470px, 58%); }
+  #toast { right: auto; width: min(470px, 58%); }
+}
+</style>

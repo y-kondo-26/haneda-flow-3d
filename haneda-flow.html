@@ -203,53 +203,122 @@ table.kpi td.d.good { color: var(--good); } table.kpi td.d.bad { color: var(--ba
 #boot { position: absolute; inset: 0; display: grid; place-items: center; background: var(--s-sky); color: var(--ink-2); font-size: 12px; z-index: 5; padding: 0 24px; text-align: center; }
 #bootTrack { height: 3px; background: var(--line); margin: 10px auto 0; width: min(280px, 100%); overflow: hidden; }
 #bootBar { display: block; height: 100%; background: var(--ink); transform: scaleX(0); transform-origin: left; }
+/* ---- スマホ用の部品（PC では出さない）と、タッチ端末向けの土台 ---- */
+#miniBar, #drawerBtn, #sheetHandle, #peek, #note2, #hlChip { display: none; }
+html { box-sizing: border-box; background: linear-gradient(var(--s-sky) 50%, var(--surface) 50%); overscroll-behavior: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { overscroll-behavior: none; }
+button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+#stageWrap, .bar, #tabs, #modeSwitch, #miniBar, #sheetHandle { -webkit-user-select: none; user-select: none; }
 </style>
 <style>
 @media (max-width: 1380px) { #ident .ttl { display: none; } }
 @media (max-width: 1180px) { :root { --panel-w: 344px; } #modeSwitch button { min-width: 112px; padding-inline: 10px; } }
 @media (min-width: 861px) and (max-height: 760px) { .chart canvas { height: 84px; } }
 
-/* ---- スマホ幅: 上に舞台、下に計器盤のシート（タブ切替）---- */
-@media (max-width: 860px) {
-  #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(250px, 46%) minmax(0, 1fr); }
-  #topBar { top: 8px; right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column-reverse; gap: 6px; align-items: stretch; }
-  #ident { align-self: flex-start; }
-  #ticker { display: none; }
-  #modeSwitch button { flex: 1; min-width: 0; font-size: 13px; padding: 6px 4px 5px; }
-  #ident .ttl { display: none; }
-  #ident .code { padding: 4px 7px 3px; } #ident .code b { font-size: 15px; } #ident .code span { font-size: 8.5px; }
-  #ident .clock { padding: 2px 8px 1px; border-left: 0; } #clock { font-size: 17px; } #ident .clock span { font-size: 9px; }
-  #stageWrap > #legend { display: none; }
-  #dock { left: 0; right: 0; bottom: 6px; gap: 5px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  #dock .bar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; width: 100%; }
-  #dock .bar::-webkit-scrollbar { display: none; }
-  #dock .bar .cap { display: none; }
-  .chip { padding: 6px 9px 5px; min-height: 32px; font-size: 12px; }
-  #caption { padding: 7px 10px 6px; } #caption b { font-size: 12px; } #caption span { font-size: 11px; }
-  #toast { top: 104px; left: auto; right: max(16px, env(safe-area-inset-right, 0px)); transform: none; max-width: 62%; font-size: 11.5px; }
-  .lbl { font-size: 10px; padding: 1px 4px; } .lbl.major { font-size: 10.5px; } .lbl small { font-size: 9px; }
+/* ==== スマホ・タブレット縦（幅 860px 以下）と横向きスマホ（高さ 500px 以下）に共通 ====
+   3D を全面に出し、指標は必要なときだけ広げる。操作は 44px 以上の大きさにする */
+@media (max-width: 860px), (max-height: 500px) and (max-width: 1000px) and (orientation: landscape) {
+  #app { display: block; position: relative; overflow: hidden; }
+  #dock, #ticker, #stageWrap > #legend, #note { display: none; }
+  #ident .ttl, #ident .clock span, #modeSwitch button small { display: none; }
+  #topBar { display: flex; gap: 6px; align-items: stretch; top: 6px; left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); }
+  #ident .code { padding: 0 8px; } #ident .code b { font-size: 15px; } #ident .code span { font-size: 8.5px; }
+  #ident .clock { padding: 0 9px; border-left: 0; } #clock { font-size: 19px; }
+  #modeSwitch { padding: 0; gap: 0; flex: 1; min-width: 0; }
+  #modeSwitch button { flex: 1; min-width: 0; min-height: 44px; font-size: 13.5px; padding: 0 4px; justify-content: center; }
+  /* 再生・速度・カメラ・ツアーを 1 行にまとめる（細かい操作はシートの「操作」タブ） */
+  #miniBar { display: flex; gap: 6px; position: absolute; left: max(8px, env(safe-area-inset-left, 0px)); bottom: calc(var(--cover, 0px) + 8px); z-index: 2; transition: bottom .26s cubic-bezier(.2, .8, .2, 1), opacity .2s; }
+  #app.dragging #miniBar, #app.dragging #caption { transition: none; }
+  #miniBar button { min-width: 44px; min-height: 44px; padding: 0 11px; display: flex; align-items: center; justify-content: center; gap: 3px; background: var(--glass); border: 1px solid var(--line);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-size: 12.5px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+  #miniBar svg { width: 13px; height: 13px; fill: currentColor; }
+  #miniBar small { font-size: 9.5px; font-weight: 400; color: var(--ink-2); }
+  #miniBar #mCam { flex-direction: column; align-items: flex-start; gap: 0; line-height: 1.2; min-width: 92px; }
+  #miniBar #mTour[aria-pressed="true"] { background: var(--plate); color: var(--plate-ink); border-color: var(--plate); }
+  #caption { left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); transform: none; width: auto; bottom: calc(var(--cover, 0px) + 60px); padding: 7px 10px 6px; transition: bottom .26s cubic-bezier(.2, .8, .2, 1); }
+  #caption b { font-size: 12px; } #caption span { font-size: 11.5px; }
+  #toast { top: 58px; left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); transform: none; max-width: none; font-size: 12px; }
+  /* ラベルは小さく・短く（「保安」と実測値の一部を省く。数は JS で絞る） */
+  .lbl { font-size: 9.5px; padding: 1px 4px 0; } .lbl.major { font-size: 10px; } .lbl small { font-size: 9px; } .lbl .lg { display: none; }
+  .lbl.track small { white-space: normal; max-width: 170px; }
 
-  #panel { border-left: 0; border-top: 1px solid var(--line); }
-  #tabs { display: flex; border-bottom: 1px solid var(--line); padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); flex: none; }
-  #tabs button { flex: 1; font-size: 12.5px; font-weight: 700; padding: 9px 2px 7px; color: var(--ink-2); border-bottom: 3px solid transparent; margin-bottom: -1px; min-height: 40px; }
+  #panel { border-left: 0; z-index: 6; }
+  #tabs { display: flex; flex: none; border-bottom: 1px solid var(--line); padding: 0 max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px)); }
+  #tabs button { flex: 1; font-size: 13px; font-weight: 700; padding: 0 2px; color: var(--ink-2); border-bottom: 3px solid transparent; margin-bottom: -1px; min-height: 44px; }
   #tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--sign); }
-  #panelBody { padding: 10px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); gap: 10px; }
+  #panelBody { padding: 10px max(16px, env(safe-area-inset-right, 0px)) 14px max(16px, env(safe-area-inset-left, 0px)); gap: 10px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   #panel .sec { display: none; }
   #panel[data-tab="kpi"] #secKpi, #panel[data-tab="chart"] #secChart, #panel[data-tab="log"] #secLog, #panel[data-tab="ctl"] #secCtl { display: block; }
-  #secCtl .bar { background: none; border: 0; padding: 0; backdrop-filter: none; -webkit-backdrop-filter: none; gap: 6px; margin-bottom: 12px; }
-  #secCtl .bar .cap { flex-basis: 100%; padding: 0; font-size: 11px; font-weight: 700; }
+  .seg { flex: none; } .seg button { min-height: 44px; padding: 0 12px; font-size: 12px; white-space: nowrap; }
+  .sec > h2 { align-items: center; }
+  #secCtl .bar { background: none; border: 0; padding: 0; backdrop-filter: none; -webkit-backdrop-filter: none; gap: 8px; margin-bottom: 14px; }
+  #secCtl .bar .cap { flex-basis: 100%; padding: 0; font-size: 11.5px; font-weight: 700; }
   #secCtl .bar .sep { display: none; }
-  #secCtl .chip { border-color: var(--line); min-height: 36px; padding-inline: 12px; }
-  #secCtl #legend { position: static; background: none; border: 0; padding: 0; backdrop-filter: none; -webkit-backdrop-filter: none; font-size: 12px; }
-  #secCtl #legend summary { font-size: 11px; color: var(--ink-2); }
+  #secCtl #camBar::before, #secCtl #timeBar::before { flex-basis: 100%; font-size: 11.5px; font-weight: 700; color: var(--ink-2); }
+  #secCtl #camBar::before { content: "カメラ"; } #secCtl #timeBar::before { content: "再生と速度"; }
+  #secCtl #timeBar .cap { flex-basis: auto; font-weight: 400; align-self: center; padding: 0 2px 0 6px; }
+  #secCtl .chip { border-color: var(--line); min-height: 44px; padding: 0 14px; font-size: 13px; }
+  #secCtl #btnPlay { width: 48px; padding: 0; }
   #secCtl #ctlBars { display: block; }
-  #note { font-size: 10px; padding: 5px max(16px, env(safe-area-inset-right, 0px)) calc(5px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
-  #note span { display: none; }
+  #secCtl #legend { position: static; background: none; border: 0; padding: 0; backdrop-filter: none; -webkit-backdrop-filter: none; font-size: 12.5px; }
+  #secCtl #legend summary { font-size: 11.5px; color: var(--ink-2); min-height: 44px; }
+  #secCtl #legend li { padding: 2px 0; }
+  #note2 { display: block; font-size: 10.5px; line-height: 1.5; color: var(--ink-3); border-top: 1px solid var(--line); padding-top: 8px; }
   #headline strong { font-size: 15px; } #headline strong em { font-size: 22px; }
-  .chart canvas { height: 96px; }
+  .chart canvas { height: 132px; }
+  #fids li, #log li { font-size: 12.5px; }
 }
-@media (max-width: 860px) and (max-height: 560px) { #app { grid-template-rows: minmax(200px, 52%) minmax(0, 1fr); } #ident { display: none; } }
-@media (prefers-reduced-motion: reduce) { #worldFlash.on { animation: none; } .lbl, #toast { transition: none; } }
+
+/* ==== 縦向き: 下から引き出すシート。高さは 3 段（要約だけ / 半分 / ほぼ全面）==== */
+@media (max-width: 860px) and (min-height: 501px), (max-width: 860px) and (orientation: portrait) {
+  :root { --peek-h: 122px; }
+  #stageWrap { position: absolute; inset: 0 0 var(--peek-h) 0; }
+  #panel { position: absolute; left: 0; right: 0; bottom: 0; height: var(--sheet-h, var(--peek-h)); max-height: calc(100% - 56px); border-top: 1px solid var(--line);
+    box-shadow: 0 -8px 22px rgba(10, 20, 30, .16); transition: height .26s cubic-bezier(.2, .8, .2, 1); }
+  #panel.dragging { transition: none; }
+  #panel[data-snap="half"] { --sheet-h: 54%; }
+  #panel[data-snap="full"] { --sheet-h: 100%; }
+  #sheetHandle { display: block; flex: none; position: relative; width: 100%; height: 22px; touch-action: none; cursor: grab; }
+  #sheetHandle i { position: absolute; left: 50%; top: 9px; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: var(--ink-3); }
+  #sheetHandle::before { content: ""; position: absolute; left: 24%; right: 24%; top: -16px; bottom: -6px; }      /* 押せる範囲を 44px に広げる */
+  #peek { display: block; flex: none; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); touch-action: none; cursor: grab; }
+  #panel:not([data-snap="peek"]) #peek, #panel[data-snap="peek"] #tabs, #panel[data-snap="peek"] #panelBody { display: none; }
+  #pkMain { font-size: 15px; font-weight: 700; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #pkMain em { font-style: normal; font-family: var(--font-num); font-size: 21px; margin-left: 4px; }
+  #pkMain em.good { color: var(--good); } #pkMain em.bad { color: var(--bad); }
+  #pkStats { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; margin: 5px 0 4px; }
+  #pkStats div { border-left: 2px solid var(--line); padding-left: 8px; min-width: 0; }
+  #pkStats dt { font-size: 10.5px; color: var(--ink-2); white-space: nowrap; } #pkStats dt small { font-size: 9.5px; color: var(--ink-3); margin-left: 4px; }
+  #pkStats dd { margin: 0; font-size: 17px; line-height: 1.25; white-space: nowrap; display: flex; align-items: baseline; gap: 4px; }
+  #pkStats dd span { color: var(--ink-2); font-size: 14px; } #pkStats dd i { font-style: normal; font-size: 11px; color: var(--ink-3); } #pkStats dd b.good { color: var(--good); } #pkStats dd b.bad { color: var(--bad); }
+  #pkNote { font-size: 9.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #app[data-snap="full"] #miniBar { opacity: 0; pointer-events: none; }
+  #panel[data-snap="full"] .chart canvas { height: 170px; }
+}
+@media (prefers-reduced-motion: reduce) { #worldFlash.on { animation: none; } .lbl, #toast, #panel, #miniBar, #caption { transition: none !important; } }
+</style>
+<style>
+/* ==== 横向きのスマホ（高さ 500px 以下）: 3D を全面に出し、指標は右から引き出すパネルにする ==== */
+@media (max-height: 500px) and (max-width: 1000px) and (orientation: landscape) {
+  #stageWrap { position: absolute; inset: 0; }
+  #topBar { right: calc(max(8px, env(safe-area-inset-right, 0px)) + 84px); }      /* 右端は「指標」ボタンの場所 */
+  #modeSwitch { flex: 0 1 236px; }
+  #hlChip { display: block; flex: 1; min-width: 0; margin: 0; padding: 0 10px; line-height: 44px; background: var(--glass); border: 1px solid var(--line); font-size: 12.5px; font-weight: 700;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: none; }
+  #hlChip em { font-style: normal; font-family: var(--font-num); font-size: 17px; margin-left: 6px; }
+  #hlChip em.good { color: var(--good); } #hlChip em.bad { color: var(--bad); }
+  #app.drawer-open #hlChip { visibility: hidden; }
+  #drawerBtn { display: block; position: absolute; top: 6px; right: max(8px, env(safe-area-inset-right, 0px)); z-index: 7; width: 78px; min-height: 44px; padding: 0 8px;
+    background: var(--plate); color: var(--plate-ink); font-weight: 700; font-size: 13px; }
+  #panel { position: absolute; top: 0; right: 0; bottom: 0; width: min(400px, 58%); padding-top: 56px; border-left: 1px solid var(--line); box-shadow: -8px 0 22px rgba(10, 20, 30, .16);
+    transform: translateX(102%); visibility: hidden; transition: transform .26s cubic-bezier(.2, .8, .2, 1), visibility 0s .26s; }
+  #panel.open { transform: none; visibility: visible; transition: transform .26s cubic-bezier(.2, .8, .2, 1); }
+  #tabs { padding: 0 max(12px, env(safe-area-inset-right, 0px)) 0 12px; }
+  #panelBody { padding: 10px max(16px, env(safe-area-inset-right, 0px)) 14px 16px; }
+  .chart canvas { height: 112px; }
+  #caption { right: auto; width: min(470px, 58%); }
+  #toast { right: auto; width: min(470px, 58%); }
+}
 </style>
 <div id="app">
   <div id="stageWrap">
@@ -266,6 +335,7 @@ table.kpi td.d.good { color: var(--good); } table.kpi td.d.bad { color: var(--ba
       <button id="modeBase" type="button" role="radio" aria-checked="false">従来運用<small>固定の計画と事後の対応</small></button>
       <button id="modeAi" type="button" role="radio" aria-checked="true">AI 最適化<small>予測して先に手配する</small></button>
     </div>
+    <p id="hlChip"></p>
     </div>
     <div id="ticker" hidden><span id="tickKind"></span><time id="tickTime" class="num"></time><p id="tickText"></p></div>
     <details id="legend" open>
@@ -325,10 +395,27 @@ table.kpi td.d.good { color: var(--good); } table.kpi td.d.bad { color: var(--ba
         </div>
       </div>
     </div>
+    <div id="miniBar" role="group" aria-label="再生とカメラ">
+      <button type="button" id="mPlay" aria-label="一時停止"><svg viewBox="0 0 12 12" aria-hidden="true"><path id="mPlayIcon" d="M2 1h3v10H2zM7 1h3v10H7z"/></svg></button>
+      <button type="button" id="mSpeed" aria-label="速度を切り替える。現在は 1 秒あたり 1 分"><span class="num" id="mSpeedTxt">1 分</span><small>/秒</small></button>
+      <button type="button" id="mCam" aria-label="カメラを次の場所へ切り替える"><small>カメラ</small><b id="mCamTxt">全景</b></button>
+      <button type="button" id="mTour" aria-pressed="false">ツアー</button>
+    </div>
+    <button type="button" id="drawerBtn" aria-expanded="false" aria-controls="panel">指標</button>
     <div id="boot"><div><p id="bootMsg">3D ライブラリを読み込んでいます</p><div id="bootTrack"><i id="bootBar"></i></div></div></div>
   </div>
 
   <aside id="panel" data-tab="kpi" aria-label="運用の指標">
+    <button type="button" id="sheetHandle" aria-label="指標のシートの高さを切り替える" aria-expanded="false"><i></i></button>
+    <div id="peek">
+      <p id="pkMain">計測中</p>
+      <dl id="pkStats">
+        <div><dt>平均待ち<small>分</small></dt><dd><span class="num" id="pk1b">–</span><i>→</i><b class="num" id="pk1a">–</b></dd></div>
+        <div><dt>積み残し<small>件/千個</small></dt><dd><span class="num" id="pk2b">–</span><i>→</i><b class="num" id="pk2a">–</b></dd></div>
+        <div><dt>延べ人時<small>差</small></dt><dd><b class="num" id="pk3">–</b></dd></div>
+      </dl>
+      <p id="pkNote">架空の設定によるシミュレーションです。左が従来運用、右が AI 最適化。</p>
+    </div>
     <div id="tabs" role="tablist">
       <button type="button" role="tab" id="tabKpi" data-tab="kpi" aria-selected="true">指標</button>
       <button type="button" role="tab" id="tabChart" data-tab="chart" aria-selected="false">グラフ</button>
@@ -358,6 +445,7 @@ table.kpi td.d.good { color: var(--good); } table.kpi td.d.bad { color: var(--ba
         <ul id="fids" hidden></ul>
       </section>
       <section class="sec" id="secCtl"><div id="sheetSlot"></div></section>
+      <p id="note2">シミュレーションの値は架空の設定に基づくもので、羽田空港の実際のレイアウト・運用データではありません。歩行と搬送の速さは、表示のために実際より遅くしています。</p>
     </div>
     <p id="note">シミュレーションの値は架空の設定に基づくもので、羽田空港の実際のレイアウト・運用データではありません。<span>便名・ゲート・施設の配置は構想図です。歩行と搬送の速さは、表示のために実際より遅くしています。</span></p>
   </aside>
@@ -1328,10 +1416,16 @@ Sim.prototype.view60 = function () {
 const $ = id => document.getElementById(id);
 const stageEl = $('stage'), wrapEl = $('stageWrap');
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-const isNarrow = window.matchMedia('(max-width: 860px)');
+// 画面の型: compact = スマホ・タブレット縦（幅 860px 以下）と横向きスマホ、land = 横向きスマホ（高さ 500px 以下）。CSS のメディアクエリと同じ条件
+const mqCompact = window.matchMedia('(max-width: 860px), (max-height: 500px) and (max-width: 1000px) and (orientation: landscape)');
+const mqLand = window.matchMedia('(max-height: 500px) and (max-width: 1000px) and (orientation: landscape)');
+const isNarrow = mqCompact;
+// タッチ端末と狭い画面では負荷を下げる（解像度の上限 1.5 倍、影は軽い方式で 1024px、旅客の多角形を減らす）
+const lowPower = window.matchMedia('(pointer: coarse)').matches || mqCompact.matches;
+const PR_MAX = lowPower ? 1.5 : 2;
 const renderer = new THREE.WebGLRenderer({ canvas: stageEl, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.shadowMap.autoUpdate = false;
+renderer.setPixelRatio(Math.min(PR_MAX, window.devicePixelRatio || 1));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = lowPower ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap; renderer.shadowMap.autoUpdate = false;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(34, 1, 3, 5000);
 camera.position.set(-250, 215, 330);
@@ -1343,7 +1437,7 @@ const labelRenderer = new CSS2DRenderer({ element: $('labels') });
 const hemi = new THREE.HemisphereLight(0xffffff, 0xcccccc, 1);
 const sun = new THREE.DirectionalLight(0xffffff, 1);
 sun.position.set(-170, 300, 210); sun.castShadow = true;
-sun.shadow.mapSize.set(isNarrow.matches ? 1024 : 2048, isNarrow.matches ? 1024 : 2048);
+sun.shadow.mapSize.set(lowPower ? 1024 : 2048, lowPower ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -290, right: 290, top: 190, bottom: -230, near: 50, far: 800 }); sun.shadow.camera.updateProjectionMatrix();
 sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.6; sun.shadow.radius = 3.5;
 scene.add(hemi, sun, sun.target);
@@ -1531,7 +1625,7 @@ function buildUpper() {
     }
     box(mUp, 0.5, 2.6, 15, cp.x - 14.4, YU + 1.3, 34); box(mUp, 0.5, 2.6, 15, cp.x + 14.4, YU + 1.3, 34);
     for (let r = 0; r < 4; r++) box(mUpEdge, 27, 0.9, 0.12, cp.x, YU + 0.45, LAY.zQ - 0.65 + r * 1.3);      // 行列の仕切り
-    addLabel(`保安検査場 <span class="num">${cp.name}</span><small data-live="cp${c}"></small>`, cp.x, YU + 8, 43, 'major', 1, 2);
+    addLabel(`<span class="lg">保安</span>検査場 <span class="num">${cp.name}</span><small data-live="cp${c}"></small>`, cp.x, YU + 8, 43, 'major', 1, 2);
     // 出国審査（顔認証ゲート）
     for (let k = 0; k < LAY.immGates; k++) { const x = cp.x + (k - 3) * 2.6; box(mUpMachine, 0.5, 1.2, 2.4, x - 1.1, YU + 0.6, LAY.zImm); box(mUpGlass, 0.9, 1.0, 0.12, x - 0.4, YU + 0.7, LAY.zImm - 0.6); }
     box(mUpMachine, 0.5, 1.2, 2.4, cp.x + 9.2 - 1.1 + 2.6 - 1.5, YU + 0.6, LAY.zImm);
@@ -1776,7 +1870,7 @@ function glowPoints(max, size) {
 function buildFlows() {
   paxMatLit = new THREE.MeshLambertMaterial(); paxMatFlat = new THREE.MeshBasicMaterial({ transparent: false });
   bagMatLit = new THREE.MeshLambertMaterial(); bagMatFlat = new THREE.MeshBasicMaterial();
-  paxMesh = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.36, 0.95, 2, 7), paxMatLit, PAX_MAX); initInstanced(paxMesh, PAX_MAX, 1, 1, 1);
+  paxMesh = new THREE.InstancedMesh(lowPower ? new THREE.CapsuleGeometry(0.36, 0.95, 1, 5) : new THREE.CapsuleGeometry(0.36, 0.95, 2, 7), paxMatLit, PAX_MAX); initInstanced(paxMesh, PAX_MAX, 1, 1, 1);
   bagMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1.3, 0.85, 1.0), bagMatLit, BAG_MAX); initInstanced(bagMesh, BAG_MAX, 1, 1, 1);
   const mTug = M('sign', { roughness: 0.7 }), mDolly = M('s-edge');
   tugMesh = new THREE.InstancedMesh(mergeGeometries([new THREE.BoxGeometry(1.5, 0.9, 2.6).translate(0, 0.75, 0), new THREE.BoxGeometry(1.3, 0.7, 1.0).translate(0, 1.5, -0.5)]), mTug, TUG_MAX);
@@ -1920,6 +2014,7 @@ function updateLabelVisibility() {
     const bw = (L.w || L.el.textContent.length * 6.5 + 14) + 6, bh = (L.h || 32) + 4, x0 = sx - bw / 2, y0 = sy - bh;
     let hit = false; for (const k of _kept) if (x0 < k[2] && x0 + bw > k[0] && y0 < k[3] && y0 + bh > k[1]) { hit = true; break; }
     if (hit) continue; _kept.push([x0, y0, x0 + bw, y0 + bh]); L.want = true;
+    if (narrow && _kept.length >= (mqLand.matches ? 5 : 4)) break;      // 狭い画面では同時に出す数を絞る
   }
   for (const L of labels) if (L.tier > 0 && L.o.visible !== L.want) L.o.visible = L.want;
 }
@@ -1927,7 +2022,8 @@ function updateLiveLabels(sim, world) {
   const t = sim.t;
   for (let c = 0; c < 3; c++) {
     const cp = sim.cp[c], open = Math.min(cp.open, cp.limit), w = cp.q.length * P.secSvcMean / Math.max(0.5, open);
-    setLive('cp' + c, `レーン ${open}/${LAY.cpLanes}・待ち ${cp.q.length} 人（約 ${Math.round(w)} 分）`, cp.limit < 99 ? 'down' : w >= 8 ? 'alert' : '');
+    // 狭い画面では短く書く（例「待ち 70 人・7 分」）
+    setLive('cp' + c, isNarrow.matches ? `待ち ${cp.q.length} 人・${Math.round(w)} 分` : `レーン ${open}/${LAY.cpLanes}・待ち ${cp.q.length} 人（約 ${Math.round(w)} 分）`, cp.limit < 99 ? 'down' : w >= 8 ? 'alert' : '');
   }
   for (let i = 0; i < 6; i++) setLive('isl' + i, sim.isl[i].q.length ? `待ち ${sim.isl[i].q.length} 人` : '');
   for (let l = 0; l < 3; l++) { const e = sim.eds[l], down = sim.scn.edsDown === l; setLive('eds' + l, down ? `停止中・滞留 ${e.q.length} 個` : `待ち ${e.q.length} 個`, down ? 'down' : e.q.length > 30 ? 'alert' : ''); }
@@ -1977,7 +2073,7 @@ function updateTrack(sim) {
     trackBag = pick; if (pick) { trackUid = pick.uid; trackText = ''; }
   }
   // 全景では出さない（床の下の 1 個を指しても分かりにくいため）。近づくか、上階を透かしたときに出す
-  const b = trackBag; trackObj.visible = !!b && labelsOn && (upperGhostTarget > 0.5 || camera.position.distanceTo(controls.target) < (isNarrow.matches ? 200 : 320));
+  const b = trackBag; trackObj.visible = !!b && labelsOn && (upperGhostTarget > 0.5 || (!isNarrow.matches && camera.position.distanceTo(controls.target) < 320));      // 狭い画面では、上階を透かしたときだけ出す
   if (!b) return;
   b.sim = sim; trackObj.position.set(b.x, b.y + 0.6, b.z);
   const txt = `${b.f.code} 便（${hhmm(b.f.dep)} 発）・${b.missed ? '出発に間に合わず、次の便へ振替' : bagStatus(b, sim)}`;
@@ -1986,7 +2082,7 @@ function updateTrack(sim) {
 // =====================================================================
 // 70 ui (指標・グラフ) : 2 つのシミュレーションの実測値を並べ、差を出す
 // =====================================================================
-const SEED = 20261124, START_AT = 17 * 60 + 8;     // 最初に見せる時刻（夕方の出発ピーク。05:00 からここまでを起動時に計算する）
+const SEED = 20261124, START_AT = 7 * 60 + 40;     // 最初に見せる時刻（朝のピーク。従来運用の保安検査の待ちが 07:45〜08:15 に最大になる直前。05:00 からここまでを起動時に計算する）
 let world, sims, active = 1, speed = 1, playing = true, win60 = false;
 const fmt = (v, dec) => v.toLocaleString('ja-JP', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const KPI_ROWS = [
@@ -2023,6 +2119,12 @@ function updateKpi() {
     $('hlMain').innerHTML = `保安検査の平均待ち <em class="${w.sign > 0 ? 'good' : w.sign < 0 ? 'bad' : ''}">${w.txt}</em>`;
     $('hlSub').innerHTML = `従来運用 <span class="num">${fmt(vb.waitAvg, 1)}</span> 分 → AI 最適化 <span class="num">${fmt(va.waitAvg, 1)}</span> 分。レーンの延べ人時は <span class="num">${l.txt}</span>、ミスハンドリングは <span class="num">${fmt(vb.mishandled, 1)}</span> → <span class="num">${fmt(va.mishandled, 1)}</span> 件/1,000個（${win60 ? '直近 60 分' : '05:00 から ' + hhmm(sims[0].t) + ' まで'}）。`;
   }
+  // スマホ: シートを最小にしたときの要約（結論 1 行 + 数値 3 つ）と、横向きの 1 行表示
+  const hl = vb.secN < 200 ? '計測中' : `保安検査の平均待ち <em class="${w.sign > 0 ? 'good' : w.sign < 0 ? 'bad' : ''}">${w.txt}</em>`, noFl = !vb.closedFlights;
+  $('pkMain').innerHTML = hl; $('hlChip').innerHTML = hl;
+  $('pk1b').textContent = fmt(vb.waitAvg, 1); $('pk1a').textContent = fmt(va.waitAvg, 1);
+  $('pk2b').textContent = noFl ? '–' : fmt(vb.mishandled, 1); $('pk2a').textContent = noFl ? '–' : fmt(va.mishandled, 1);
+  $('pk3').textContent = l.txt; $('pk3').className = 'num' + (l.sign > 0 ? ' good' : l.sign < 0 ? ' bad' : '');
 }
 
 // ---- グラフ（canvas 2D）。軸と目盛りは実際の値から引く ----
@@ -2118,7 +2220,10 @@ function refreshUi(force) {
     const b = $(id); b.dataset.active = on ? '1' : '0'; b.disabled = on || sims[0].t > DAY1 - 130;
   }
 }
-function setPlaying(p) { playing = p; $('playIcon').setAttribute('d', p ? 'M2 1h3v10H2zM7 1h3v10H7z' : 'M2.5 1l8 5-8 5z'); $('btnPlay').setAttribute('aria-label', p ? '一時停止' : '再生'); }
+function setPlaying(p) {
+  playing = p; const d = p ? 'M2 1h3v10H2zM7 1h3v10H7z' : 'M2.5 1l8 5-8 5z';
+  for (const [icon, btn] of [['playIcon', 'btnPlay'], ['mPlayIcon', 'mPlay']]) { $(icon).setAttribute('d', d); $(btn).setAttribute('aria-label', p ? '一時停止' : '再生'); }
+}
 function resetSim(until) {
   world = buildWorld(SEED); sims = [new Sim(world, 0), new Sim(world, 1)];
   for (let t = DAY0; t < until - 1e-6; t += 0.05) { sims[0].step(0.05); sims[1].step(0.05); }
@@ -2136,19 +2241,22 @@ async function prewarm(until, onProgress) {
   }
   logSig = '';
 }
-function placeControls() {       // スマホ幅では、事象・表示の操作と凡例を下のシートへ移す
-  if (isNarrow.matches) { $('sheetSlot').append($('ctlBars'), $('legend')); }
-  else { $('dockSlot').append($('ctlBars')); $('stageWrap').insertBefore($('legend'), $('toast')); }
+function placeControls() {       // スマホでは、カメラ・時間・事象・表示の操作と凡例を「操作」タブへ移す（舞台には 1 行の操作だけを残す）
+  if (isNarrow.matches) { $('sheetSlot').append($('camBar'), $('timeBar'), $('ctlBars'), $('legend')); }
+  else { $('dock').prepend($('camBar'), $('timeBar')); $('dockSlot').append($('ctlBars')); $('stageWrap').insertBefore($('legend'), $('toast')); }
   $('legend').open = isNarrow.matches || (wrapEl.clientWidth >= 900 && wrapEl.clientHeight >= 700);      // 舞台が狭いときは凡例をたたんでおく
 }
 function pressGroup(ids, on) { for (const id of ids) $(id).setAttribute('aria-pressed', id === on); }
 
 function bindUi() {
-  buildKpiTable(); placeControls(); isNarrow.addEventListener('change', () => { placeControls(); onResize(); });
+  buildKpiTable(); placeControls();
   $('modeBase').addEventListener('click', () => setMode(0)); $('modeAi').addEventListener('click', () => setMode(1));
   $('modeSwitch').addEventListener('keydown', e => { if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) { e.preventDefault(); setMode(1 - active); (active ? $('modeAi') : $('modeBase')).focus(); } });
   $('btnPlay').addEventListener('click', () => setPlaying(!playing));
-  for (const id of ['spd1', 'spd2', 'spd4']) $(id).addEventListener('click', e => { speed = +e.currentTarget.dataset.spd; pressGroup(['spd1', 'spd2', 'spd4'], id); if (!playing) setPlaying(true); });
+  for (const id of ['spd1', 'spd2', 'spd4']) $(id).addEventListener('click', e => {
+    speed = +e.currentTarget.dataset.spd; pressGroup(['spd1', 'spd2', 'spd4'], id); if (!playing) setPlaying(true);
+    $('mSpeedTxt').textContent = speed + ' 分'; $('mSpeed').setAttribute('aria-label', `速度を切り替える。現在は 1 秒あたり ${speed} 分`);
+  });
   $('btnRestart').addEventListener('click', () => { resetSim(DAY0 + 2); setPlaying(true); refreshUi(true); toast('05:00 から計算をやり直します。'); });
   $('winAll').addEventListener('click', () => { win60 = false; pressGroup(['winAll', 'win60'], 'winAll'); updateKpi(); });
   $('win60').addEventListener('click', () => { win60 = true; pressGroup(['winAll', 'win60'], 'win60'); updateKpi(); });
@@ -2178,23 +2286,25 @@ function bindUi() {
 // =====================================================================
 // 注視点 t と、方位 az（0 = ランドサイド正面、度）・仰角 el（度）・距離 d で決める
 const CAMS = {
-  all: { t: [12, 0, -14], az: -30, el: 37, d: 440, ghost: 0 },
-  lobby: { t: [-52, 12, 60], az: -24, el: 40, d: 118, ghost: 0 },
-  sec: { t: [0, 12, 40], az: 22, el: 46, d: 92, ghost: 0 },
-  bhs: { t: [0, 0, 27], az: -14, el: 50, d: 250, ghost: 1 },
-  ebs: { t: [-122, 2, 26], az: -52, el: 40, d: 120, ghost: 1 },
-  apron: { t: [22, 4, -40], az: 204, el: 21, d: 150, ghost: 0 },
+  all: { t: [12, 0, -14], az: -30, el: 37, d: 440, ghost: 0, port: { t: [0, 0, 24], az: -66, el: 40, d: 400 } },
+  lobby: { t: [-52, 12, 60], az: -24, el: 40, d: 118, ghost: 0, port: { t: [-60, 12, 62], az: -62, el: 44, d: 120 } },
+  sec: { t: [0, 12, 40], az: 22, el: 46, d: 92, ghost: 0, port: { t: [0, 12, 42], az: 64, el: 46, d: 104 } },
+  bhs: { t: [0, 0, 27], az: -14, el: 50, d: 250, ghost: 1, port: { t: [0, 0, 27], az: -70, el: 50, d: 250 } },
+  ebs: { t: [-122, 2, 26], az: -52, el: 40, d: 120, ghost: 1, port: { t: [-130, 2, 26], az: -18, el: 44, d: 120 } },
+  apron: { t: [22, 4, -40], az: 204, el: 21, d: 150, ghost: 0, port: { t: [10, 4, -44], az: 246, el: 24, d: 170 } },
 };
-let camTween = null, camName = 'all', roofUser = false;
+let camTween = null, camName = 'all', roofUser = false, camUser = false;      // camUser: 利用者が手でカメラを動かした（自動で構図を直さない）
+const CAM_NAMES = { all: '全景', lobby: '出発ロビー', sec: '保安検査場', bhs: '手荷物仕分け', ebs: 'EBS', apron: 'エプロン' };
 const ease = k => k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
 function camPose(name) {
-  const c = CAMS[name], t = new THREE.Vector3(...c.t), az = c.az * Math.PI / 180, el = c.el * Math.PI / 180;
-  // 画面が縦長のときは、対象が収まるようにカメラを引く
-  const asp = camera.aspect || 1.4, k = name === 'all' ? Math.max(1, 1.42 / asp) : Math.max(1, 1.1 / asp), d = c.d * k;
+  // 見えている範囲が縦長のときは、ターミナルの長手方向が画面の縦に来る向き（port）から見て、収まる距離まで引く
+  const asp = visAspect(), tall = asp < 0.85, base = CAMS[name], c = tall && base.port ? { ...base, ...base.port } : base;
+  const t = new THREE.Vector3(...c.t), az = c.az * Math.PI / 180, el = c.el * Math.PI / 180;
+  const fit = tall ? (name === 'all' ? 0.6 : 0.62) : (name === 'all' ? 1.42 : 1.1), d = c.d * Math.max(1, fit / asp);
   const p = new THREE.Vector3(t.x + d * Math.sin(az) * Math.cos(el), t.y + d * Math.sin(el), t.z + d * Math.cos(az) * Math.cos(el)); return { p, t };
 }
 function goCam(name, instant) {
-  const c = CAMS[name]; if (!c) return; camName = name;
+  const c = CAMS[name]; if (!c) return; camName = name; camUser = false; $('mCamTxt').textContent = CAM_NAMES[name];
   for (const b of $('camBar').querySelectorAll('[data-cam]')) b.setAttribute('aria-pressed', b.dataset.cam === name);
   if (!roofUser) { upperGhostTarget = c.ghost; $('layRoof').setAttribute('aria-pressed', c.ghost === 1); }
   const { p, t } = camPose(name);
@@ -2225,25 +2335,116 @@ function showTourStep() {
 }
 function setTour(on) {
   if (on && reduceMotion.matches) { toast('動きを減らす設定のため、自動ツアーは使えません。カメラのボタンで各エリアへ移動できます。'); on = false; }
-  tourOn = on; $('btnTour').setAttribute('aria-pressed', on); controls.autoRotate = on; controls.autoRotateSpeed = 0.35;
+  tourOn = on; $('btnTour').setAttribute('aria-pressed', on); $('mTour').setAttribute('aria-pressed', on); controls.autoRotate = on; controls.autoRotateSpeed = 0.35;
   if (on) { tourStep = 0; tourT = 0; showTourStep(); } else $('caption').hidden = true;
 }
 function stepTour(dt) { if (!tourOn) return; tourT += dt; if (tourT > 10.5) { tourT = 0; tourStep = (tourStep + 1) % TOUR.length; showTourStep(); } }
 function bindCamera() {
   for (const b of $('camBar').querySelectorAll('[data-cam]')) b.addEventListener('click', () => { if (tourOn) setTour(false); goCam(b.dataset.cam); });
   $('btnTour').addEventListener('click', () => setTour(!tourOn));
-  controls.addEventListener('start', () => { camTween = null; if (tourOn) setTour(false); for (const b of $('camBar').querySelectorAll('[data-cam]')) b.setAttribute('aria-pressed', 'false'); });
+  controls.addEventListener('start', () => { camTween = null; camUser = true; if (tourOn) setTour(false); for (const b of $('camBar').querySelectorAll('[data-cam]')) b.setAttribute('aria-pressed', 'false'); });
   $('layRoof').addEventListener('click', () => { roofUser = $('layRoof').getAttribute('aria-pressed') === 'true'; });
   reduceMotion.addEventListener('change', () => { if (reduceMotion.matches && tourOn) setTour(false); });
+}
+// =====================================================================
+// 76 mobile : スマホ向けの操作。縦向き = 下のシート（高さ 3 段）、横向き = 右から引き出すパネル、舞台には 1 行の操作。
+// シートやパネルで隠れる分だけ投影をずらし、注視点が見えている範囲の中央に来るようにする（canvas の大きさは変えない）
+// =====================================================================
+const SNAPS = ['peek', 'half', 'full'], appEl = $('app'), panelEl = $('panel');
+let sheetSnap = 'peek', peekPx = 122, coverNow = 0, coverTarget = 0, drawerOpen = false, suppressClick = false;
+const uiMode = () => mqLand.matches ? 'land' : mqCompact.matches ? 'port' : 'desk';
+// 見えている範囲の縦横比（カメラの距離と画角を決めるのに使う）
+function visAspect() {
+  const w = wrapEl.clientWidth, h = wrapEl.clientHeight, m = uiMode();
+  return m === 'land' ? Math.max(120, w - coverTarget) / h : m === 'port' ? w / Math.max(120, h - coverTarget) : w / h;
+}
+function applyViewOffset() {
+  const w = wrapEl.clientWidth, h = wrapEl.clientHeight, m = uiMode();
+  if (m === 'port' && coverNow > 0.5) camera.setViewOffset(w, h, 0, coverNow / 2, w, h);
+  else if (m === 'land' && coverNow > 0.5) camera.setViewOffset(w, h, coverNow / 2, 0, w, h);
+  else if (camera.view) camera.clearViewOffset();
+}
+function stepCover(dt) {
+  if (coverNow === coverTarget) return;
+  coverNow = reduceMotion.matches || Math.abs(coverTarget - coverNow) < 0.6 ? coverTarget : coverNow + (coverTarget - coverNow) * Math.min(1, dt * 13);
+  applyViewOffset();
+}
+const snapHeight = s => s === 'peek' ? peekPx : s === 'half' ? Math.round(appEl.clientHeight * 0.54) : appEl.clientHeight - 56;
+function setCover(px, instant) {
+  coverTarget = Math.max(0, px); if (instant) { coverNow = coverTarget; applyViewOffset(); }
+  wrapEl.style.setProperty('--cover', (uiMode() === 'port' ? coverTarget : 0) + 'px');
+}
+function measurePeek() {         // 要約の実際の高さを測り、舞台の下端をそこに合わせる
+  if (uiMode() !== 'port' || sheetSnap !== 'peek') return;
+  const h = $('sheetHandle').offsetHeight + $('peek').offsetHeight;
+  if (h > 60 && Math.abs(h - peekPx) > 0.5) { peekPx = h; document.documentElement.style.setProperty('--peek-h', h + 'px'); }
+}
+function setSnap(s, instant) {
+  sheetSnap = s; panelEl.dataset.snap = s; appEl.dataset.snap = s; panelEl.style.removeProperty('--sheet-h');
+  panelEl.classList.remove('dragging'); appEl.classList.remove('dragging');
+  $('sheetHandle').setAttribute('aria-expanded', s !== 'peek');
+  if (uiMode() !== 'port') return;
+  measurePeek(); setCover(snapHeight(s) - peekPx, instant);
+  if (s !== 'peek') requestAnimationFrame(() => { updateCharts(); if (logView === 'fids') updateFids(); });
+  if (!camUser && !tourOn) goCam(camName, instant);          // 見える範囲が変わるので、構図を合わせ直す
+}
+function setDrawer(open, instant) {
+  drawerOpen = open; panelEl.classList.toggle('open', open); appEl.classList.toggle('drawer-open', open);
+  $('drawerBtn').textContent = open ? '閉じる' : '指標'; $('drawerBtn').setAttribute('aria-expanded', open);
+  if (uiMode() !== 'land') return;
+  setCover(open ? panelEl.offsetWidth : 0, instant);
+  if (open) requestAnimationFrame(() => updateCharts());
+  if (!camUser && !tourOn) goCam(camName, instant);
+}
+// 画面の型が変わったとき（回転・幅の変更）に、部品の置き場所と状態を合わせる
+function applyLayout() {
+  const m = uiMode(); placeControls();
+  if (m === 'port') { panelEl.classList.remove('open'); setSnap(sheetSnap, true); requestAnimationFrame(() => { measurePeek(); setCover(snapHeight(sheetSnap) - peekPx, true); onResize(); }); }
+  else if (m === 'land') { setDrawer(drawerOpen, true); }
+  else { panelEl.classList.remove('open'); setCover(0, true); }
+  onResize(); if (!camUser) goCam(camName, true);
+}
+function bindMobile() {
+  // ---- シートのつまみ: ドラッグで高さを変え、離したときに近い段へ寄せる。タップでは 1 段ずつ切り替える ----
+  let drag = null;
+  const down = e => { if (uiMode() !== 'port' || (e.button !== undefined && e.button > 0)) return; drag = { y: e.clientY, h: panelEl.getBoundingClientRect().height, moved: false, from: sheetSnap }; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* 合成イベントなど、捕捉できない場合はそのまま続ける */ } };
+  const move = e => {
+    if (!drag) return; const dy = drag.y - e.clientY;
+    if (!drag.moved && Math.abs(dy) < 7) return;
+    if (!drag.moved) { drag.moved = true; panelEl.classList.add('dragging'); appEl.classList.add('dragging'); if (sheetSnap === 'peek') { panelEl.dataset.snap = 'half'; appEl.dataset.snap = 'half'; } }
+    const h = clamp(drag.h + dy, peekPx, appEl.clientHeight - 56); drag.cur = h; panelEl.style.setProperty('--sheet-h', h + 'px'); setCover(h - peekPx, true);
+  };
+  const up = () => {
+    if (!drag) return; const d = drag; drag = null; if (!d.moved) return;
+    suppressClick = true; setTimeout(() => { suppressClick = false; }, 350);
+    let best = d.from, bd = 1e9; for (const s of SNAPS) { const dd = Math.abs(snapHeight(s) - d.cur); if (dd < bd) { bd = dd; best = s; } }
+    if (best === d.from && Math.abs(d.cur - d.h) > 44) best = SNAPS[clamp(SNAPS.indexOf(d.from) + (d.cur > d.h ? 1 : -1), 0, 2)];      // 少しだけ動かしたときは、動かした向きへ 1 段
+    sheetSnap = best; setSnap(best);
+  };
+  for (const el of [$('sheetHandle'), $('peek')]) { el.addEventListener('pointerdown', down); el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); }
+  $('sheetHandle').addEventListener('click', () => { if (suppressClick || uiMode() !== 'port') return; setSnap(SNAPS[(SNAPS.indexOf(sheetSnap) + 1) % 3]); });
+  $('peek').addEventListener('click', () => { if (!suppressClick && uiMode() === 'port') setSnap('half'); });
+  $('drawerBtn').addEventListener('click', () => setDrawer(!drawerOpen));
+  // ---- 舞台の 1 行の操作 ----
+  $('mPlay').addEventListener('click', () => setPlaying(!playing));
+  $('mSpeed').addEventListener('click', () => $('spd' + (speed === 1 ? 2 : speed === 2 ? 4 : 1)).click());
+  const order = ['all', 'lobby', 'sec', 'bhs', 'apron'];
+  $('mCam').addEventListener('click', () => { if (tourOn) setTour(false); goCam(order[(order.indexOf(camName) + 1) % order.length]); });
+  $('mTour').addEventListener('click', () => setTour(!tourOn));
+  mqCompact.addEventListener('change', applyLayout); mqLand.addEventListener('change', applyLayout);
+  // タブレットの縦向きは最初から半分まで開く。スマホは 3D を主役にして要約だけにする
+  sheetSnap = Math.min(appEl.clientWidth, appEl.clientHeight) >= 600 ? 'half' : 'peek';
+  applyLayout();
 }
 // =====================================================================
 // 80 main : 初期化・毎フレームの更新・リサイズ・テーマ追従・非表示時の停止
 // =====================================================================
 function onResize() {
   const w = Math.max(1, wrapEl.clientWidth), h = Math.max(1, wrapEl.clientHeight);
-  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); renderer.setSize(w, h, false); labelRenderer.setSize(w, h);
-  camera.aspect = w / h; camera.updateProjectionMatrix();
-  $('caption').style.bottom = ($('dock').offsetHeight + (isNarrow.matches ? 14 : 26)) + 'px';      // ツアーの説明は操作の帯のすぐ上に置く
+  renderer.setPixelRatio(Math.min(PR_MAX, window.devicePixelRatio || 1)); renderer.setSize(w, h, false); labelRenderer.setSize(w, h);
+  // 縦長の画面では画角を広げる（横方向の視野が狭くなりすぎないように）
+  camera.aspect = w / h; camera.fov = camera.aspect < 1 ? Math.min(50, 34 + (1 - camera.aspect) * 32) : 34; camera.updateProjectionMatrix(); applyViewOffset();
+  $('caption').style.bottom = isNarrow.matches ? '' : ($('dock').offsetHeight + 26) + 'px';      // PC: ツアーの説明は操作の帯のすぐ上に置く（スマホは CSS で決める）
   if (sims) updateCharts();
 }
 function applyThemeAll() { applyTheme(); setUpperOpacity(upperGhost); if (sims) { updateCharts(); updateFlows(sims[active]); } }
@@ -2265,7 +2466,7 @@ function tick(dtReal) {
   }
   const sim = sims[active];
   updateFlows(sim); updateHeat(sim, false); updateAircraft(sim, world); updateTrack(sim);
-  stepTour(dtReal); stepCamera(dtReal); controls.update();
+  stepTour(dtReal); stepCamera(dtReal); stepCover(dtReal); controls.update();
   const cd = camera.position.distanceTo(controls.target); scene.fog.near = cd * (TH.dark ? 1.0 : 1.25) + 260; scene.fog.far = cd * 2.4 + (TH.dark ? 1500 : 2600);   // 注視点までは霞ませない
   if (!reduceMotion.matches && playing) { waterTex.offset.x += dtReal * 0.004; waterTex.offset.y += dtReal * 0.0025; }
   if ((lblAcc += dtReal) > 0.2) { lblAcc = 0; updateLabelVisibility(); gRoof.visible = cd > 210; }
@@ -2281,7 +2482,7 @@ async function init() {
   await prewarm(START_AT, k => { bar.style.transform = `scaleX(${k.toFixed(3)})`; });
   buildSite(); buildLower(); buildUpper(); buildApron(); buildFlows(); buildHeat();
   applyTheme(); setUpperOpacity(0);
-  bindUi(); bindCamera(); onResize(); goCam('all', true); setMode(1, true);
+  bindUi(); bindCamera(); onResize(); bindMobile(); goCam('all', true); setMode(1, true);
   new ResizeObserver(onResize).observe(wrapEl);
   // テーマ: OS の設定の変化と、ビューアが付ける data-theme 属性の変化の両方に追従する
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyThemeAll);
@@ -2293,6 +2494,6 @@ async function init() {
   boot.hidden = true;
   if (!document.hidden) start();
 }
-window.__hf = { THREE, scene, camera, renderer, controls, tick, goCam, get sims() { return sims; }, get world() { return world; }, get active() { return active; } };   // 確認用（コンソールから状態を見る）
+window.__hf = { THREE, scene, camera, renderer, controls, tick, goCam, setSnap, setDrawer, get sims() { return sims; }, get world() { return world; }, get active() { return active; } };   // 確認用（コンソールから状態を見る）
 init().catch(err => { console.error(err); $('boot').hidden = false; $('bootMsg').textContent = '3D の初期化に失敗しました: ' + (err && err.message ? err.message : err); });
 </script>

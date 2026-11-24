@@ -13,6 +13,7 @@
       <button id="modeBase" type="button" role="radio" aria-checked="false">従来運用<small>固定の計画と事後の対応</small></button>
       <button id="modeAi" type="button" role="radio" aria-checked="true">AI 最適化<small>予測して先に手配する</small></button>
     </div>
+    <p id="hlChip"></p>
     </div>
     <div id="ticker" hidden><span id="tickKind"></span><time id="tickTime" class="num"></time><p id="tickText"></p></div>
     <details id="legend" open>
@@ -72,10 +73,27 @@
         </div>
       </div>
     </div>
+    <div id="miniBar" role="group" aria-label="再生とカメラ">
+      <button type="button" id="mPlay" aria-label="一時停止"><svg viewBox="0 0 12 12" aria-hidden="true"><path id="mPlayIcon" d="M2 1h3v10H2zM7 1h3v10H7z"/></svg></button>
+      <button type="button" id="mSpeed" aria-label="速度を切り替える。現在は 1 秒あたり 1 分"><span class="num" id="mSpeedTxt">1 分</span><small>/秒</small></button>
+      <button type="button" id="mCam" aria-label="カメラを次の場所へ切り替える"><small>カメラ</small><b id="mCamTxt">全景</b></button>
+      <button type="button" id="mTour" aria-pressed="false">ツアー</button>
+    </div>
+    <button type="button" id="drawerBtn" aria-expanded="false" aria-controls="panel">指標</button>
     <div id="boot"><div><p id="bootMsg">3D ライブラリを読み込んでいます</p><div id="bootTrack"><i id="bootBar"></i></div></div></div>
   </div>
 
   <aside id="panel" data-tab="kpi" aria-label="運用の指標">
+    <button type="button" id="sheetHandle" aria-label="指標のシートの高さを切り替える" aria-expanded="false"><i></i></button>
+    <div id="peek">
+      <p id="pkMain">計測中</p>
+      <dl id="pkStats">
+        <div><dt>平均待ち<small>分</small></dt><dd><span class="num" id="pk1b">–</span><i>→</i><b class="num" id="pk1a">–</b></dd></div>
+        <div><dt>積み残し<small>件/千個</small></dt><dd><span class="num" id="pk2b">–</span><i>→</i><b class="num" id="pk2a">–</b></dd></div>
+        <div><dt>延べ人時<small>差</small></dt><dd><b class="num" id="pk3">–</b></dd></div>
+      </dl>
+      <p id="pkNote">架空の設定によるシミュレーションです。左が従来運用、右が AI 最適化。</p>
+    </div>
     <div id="tabs" role="tablist">
       <button type="button" role="tab" id="tabKpi" data-tab="kpi" aria-selected="true">指標</button>
       <button type="button" role="tab" id="tabChart" data-tab="chart" aria-selected="false">グラフ</button>
@@ -105,6 +123,7 @@
         <ul id="fids" hidden></ul>
       </section>
       <section class="sec" id="secCtl"><div id="sheetSlot"></div></section>
+      <p id="note2">シミュレーションの値は架空の設定に基づくもので、羽田空港の実際のレイアウト・運用データではありません。歩行と搬送の速さは、表示のために実際より遅くしています。</p>
     </div>
     <p id="note">シミュレーションの値は架空の設定に基づくもので、羽田空港の実際のレイアウト・運用データではありません。<span>便名・ゲート・施設の配置は構想図です。歩行と搬送の速さは、表示のために実際より遅くしています。</span></p>
   </aside>

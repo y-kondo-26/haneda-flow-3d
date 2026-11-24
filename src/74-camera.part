@@ -3,23 +3,25 @@
 // =====================================================================
 // 注視点 t と、方位 az（0 = ランドサイド正面、度）・仰角 el（度）・距離 d で決める
 const CAMS = {
-  all: { t: [12, 0, -14], az: -30, el: 37, d: 440, ghost: 0 },
-  lobby: { t: [-52, 12, 60], az: -24, el: 40, d: 118, ghost: 0 },
-  sec: { t: [0, 12, 40], az: 22, el: 46, d: 92, ghost: 0 },
-  bhs: { t: [0, 0, 27], az: -14, el: 50, d: 250, ghost: 1 },
-  ebs: { t: [-122, 2, 26], az: -52, el: 40, d: 120, ghost: 1 },
-  apron: { t: [22, 4, -40], az: 204, el: 21, d: 150, ghost: 0 },
+  all: { t: [12, 0, -14], az: -30, el: 37, d: 440, ghost: 0, port: { t: [0, 0, 24], az: -66, el: 40, d: 400 } },
+  lobby: { t: [-52, 12, 60], az: -24, el: 40, d: 118, ghost: 0, port: { t: [-60, 12, 62], az: -62, el: 44, d: 120 } },
+  sec: { t: [0, 12, 40], az: 22, el: 46, d: 92, ghost: 0, port: { t: [0, 12, 42], az: 64, el: 46, d: 104 } },
+  bhs: { t: [0, 0, 27], az: -14, el: 50, d: 250, ghost: 1, port: { t: [0, 0, 27], az: -70, el: 50, d: 250 } },
+  ebs: { t: [-122, 2, 26], az: -52, el: 40, d: 120, ghost: 1, port: { t: [-130, 2, 26], az: -18, el: 44, d: 120 } },
+  apron: { t: [22, 4, -40], az: 204, el: 21, d: 150, ghost: 0, port: { t: [10, 4, -44], az: 246, el: 24, d: 170 } },
 };
-let camTween = null, camName = 'all', roofUser = false;
+let camTween = null, camName = 'all', roofUser = false, camUser = false;      // camUser: 利用者が手でカメラを動かした（自動で構図を直さない）
+const CAM_NAMES = { all: '全景', lobby: '出発ロビー', sec: '保安検査場', bhs: '手荷物仕分け', ebs: 'EBS', apron: 'エプロン' };
 const ease = k => k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
 function camPose(name) {
-  const c = CAMS[name], t = new THREE.Vector3(...c.t), az = c.az * Math.PI / 180, el = c.el * Math.PI / 180;
-  // 画面が縦長のときは、対象が収まるようにカメラを引く
-  const asp = camera.aspect || 1.4, k = name === 'all' ? Math.max(1, 1.42 / asp) : Math.max(1, 1.1 / asp), d = c.d * k;
+  // 見えている範囲が縦長のときは、ターミナルの長手方向が画面の縦に来る向き（port）から見て、収まる距離まで引く
+  const asp = visAspect(), tall = asp < 0.85, base = CAMS[name], c = tall && base.port ? { ...base, ...base.port } : base;
+  const t = new THREE.Vector3(...c.t), az = c.az * Math.PI / 180, el = c.el * Math.PI / 180;
+  const fit = tall ? (name === 'all' ? 0.6 : 0.62) : (name === 'all' ? 1.42 : 1.1), d = c.d * Math.max(1, fit / asp);
   const p = new THREE.Vector3(t.x + d * Math.sin(az) * Math.cos(el), t.y + d * Math.sin(el), t.z + d * Math.cos(az) * Math.cos(el)); return { p, t };
 }
 function goCam(name, instant) {
-  const c = CAMS[name]; if (!c) return; camName = name;
+  const c = CAMS[name]; if (!c) return; camName = name; camUser = false; $('mCamTxt').textContent = CAM_NAMES[name];
   for (const b of $('camBar').querySelectorAll('[data-cam]')) b.setAttribute('aria-pressed', b.dataset.cam === name);
   if (!roofUser) { upperGhostTarget = c.ghost; $('layRoof').setAttribute('aria-pressed', c.ghost === 1); }
   const { p, t } = camPose(name);
@@ -50,14 +52,14 @@ function showTourStep() {
 }
 function setTour(on) {
   if (on && reduceMotion.matches) { toast('動きを減らす設定のため、自動ツアーは使えません。カメラのボタンで各エリアへ移動できます。'); on = false; }
-  tourOn = on; $('btnTour').setAttribute('aria-pressed', on); controls.autoRotate = on; controls.autoRotateSpeed = 0.35;
+  tourOn = on; $('btnTour').setAttribute('aria-pressed', on); $('mTour').setAttribute('aria-pressed', on); controls.autoRotate = on; controls.autoRotateSpeed = 0.35;
   if (on) { tourStep = 0; tourT = 0; showTourStep(); } else $('caption').hidden = true;
 }
 function stepTour(dt) { if (!tourOn) return; tourT += dt; if (tourT > 10.5) { tourT = 0; tourStep = (tourStep + 1) % TOUR.length; showTourStep(); } }
 function bindCamera() {
   for (const b of $('camBar').querySelectorAll('[data-cam]')) b.addEventListener('click', () => { if (tourOn) setTour(false); goCam(b.dataset.cam); });
   $('btnTour').addEventListener('click', () => setTour(!tourOn));
-  controls.addEventListener('start', () => { camTween = null; if (tourOn) setTour(false); for (const b of $('camBar').querySelectorAll('[data-cam]')) b.setAttribute('aria-pressed', 'false'); });
+  controls.addEventListener('start', () => { camTween = null; camUser = true; if (tourOn) setTour(false); for (const b of $('camBar').querySelectorAll('[data-cam]')) b.setAttribute('aria-pressed', 'false'); });
   $('layRoof').addEventListener('click', () => { roofUser = $('layRoof').getAttribute('aria-pressed') === 'true'; });
   reduceMotion.addEventListener('change', () => { if (reduceMotion.matches && tourOn) setTour(false); });
 }

@@ -4,10 +4,16 @@
 const $ = id => document.getElementById(id);
 const stageEl = $('stage'), wrapEl = $('stageWrap');
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-const isNarrow = window.matchMedia('(max-width: 860px)');
+// 画面の型: compact = スマホ・タブレット縦（幅 860px 以下）と横向きスマホ、land = 横向きスマホ（高さ 500px 以下）。CSS のメディアクエリと同じ条件
+const mqCompact = window.matchMedia('(max-width: 860px), (max-height: 500px) and (max-width: 1000px) and (orientation: landscape)');
+const mqLand = window.matchMedia('(max-height: 500px) and (max-width: 1000px) and (orientation: landscape)');
+const isNarrow = mqCompact;
+// タッチ端末と狭い画面では負荷を下げる（解像度の上限 1.5 倍、影は軽い方式で 1024px、旅客の多角形を減らす）
+const lowPower = window.matchMedia('(pointer: coarse)').matches || mqCompact.matches;
+const PR_MAX = lowPower ? 1.5 : 2;
 const renderer = new THREE.WebGLRenderer({ canvas: stageEl, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.shadowMap.autoUpdate = false;
+renderer.setPixelRatio(Math.min(PR_MAX, window.devicePixelRatio || 1));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = lowPower ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap; renderer.shadowMap.autoUpdate = false;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(34, 1, 3, 5000);
 camera.position.set(-250, 215, 330);
@@ -19,7 +25,7 @@ const labelRenderer = new CSS2DRenderer({ element: $('labels') });
 const hemi = new THREE.HemisphereLight(0xffffff, 0xcccccc, 1);
 const sun = new THREE.DirectionalLight(0xffffff, 1);
 sun.position.set(-170, 300, 210); sun.castShadow = true;
-sun.shadow.mapSize.set(isNarrow.matches ? 1024 : 2048, isNarrow.matches ? 1024 : 2048);
+sun.shadow.mapSize.set(lowPower ? 1024 : 2048, lowPower ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -290, right: 290, top: 190, bottom: -230, near: 50, far: 800 }); sun.shadow.camera.updateProjectionMatrix();
 sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.6; sun.shadow.radius = 3.5;
 scene.add(hemi, sun, sun.target);

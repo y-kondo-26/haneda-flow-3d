@@ -1,7 +1,7 @@
 // =====================================================================
 // 70 ui (指標・グラフ) : 2 つのシミュレーションの実測値を並べ、差を出す
 // =====================================================================
-const SEED = 20261124, START_AT = 17 * 60 + 8;     // 最初に見せる時刻（夕方の出発ピーク。05:00 からここまでを起動時に計算する）
+const SEED = 20261124, START_AT = 7 * 60 + 40;     // 最初に見せる時刻（朝のピーク。従来運用の保安検査の待ちが 07:45〜08:15 に最大になる直前。05:00 からここまでを起動時に計算する）
 let world, sims, active = 1, speed = 1, playing = true, win60 = false;
 const fmt = (v, dec) => v.toLocaleString('ja-JP', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const KPI_ROWS = [
@@ -38,6 +38,12 @@ function updateKpi() {
     $('hlMain').innerHTML = `保安検査の平均待ち <em class="${w.sign > 0 ? 'good' : w.sign < 0 ? 'bad' : ''}">${w.txt}</em>`;
     $('hlSub').innerHTML = `従来運用 <span class="num">${fmt(vb.waitAvg, 1)}</span> 分 → AI 最適化 <span class="num">${fmt(va.waitAvg, 1)}</span> 分。レーンの延べ人時は <span class="num">${l.txt}</span>、ミスハンドリングは <span class="num">${fmt(vb.mishandled, 1)}</span> → <span class="num">${fmt(va.mishandled, 1)}</span> 件/1,000個（${win60 ? '直近 60 分' : '05:00 から ' + hhmm(sims[0].t) + ' まで'}）。`;
   }
+  // スマホ: シートを最小にしたときの要約（結論 1 行 + 数値 3 つ）と、横向きの 1 行表示
+  const hl = vb.secN < 200 ? '計測中' : `保安検査の平均待ち <em class="${w.sign > 0 ? 'good' : w.sign < 0 ? 'bad' : ''}">${w.txt}</em>`, noFl = !vb.closedFlights;
+  $('pkMain').innerHTML = hl; $('hlChip').innerHTML = hl;
+  $('pk1b').textContent = fmt(vb.waitAvg, 1); $('pk1a').textContent = fmt(va.waitAvg, 1);
+  $('pk2b').textContent = noFl ? '–' : fmt(vb.mishandled, 1); $('pk2a').textContent = noFl ? '–' : fmt(va.mishandled, 1);
+  $('pk3').textContent = l.txt; $('pk3').className = 'num' + (l.sign > 0 ? ' good' : l.sign < 0 ? ' bad' : '');
 }
 
 // ---- グラフ（canvas 2D）。軸と目盛りは実際の値から引く ----

@@ -1,0 +1,90 @@
+// =====================================================================
+// 76 mobile : スマホ向けの操作。縦向き = 下のシート（高さ 3 段）、横向き = 右から引き出すパネル、舞台には 1 行の操作。
+// シートやパネルで隠れる分だけ投影をずらし、注視点が見えている範囲の中央に来るようにする（canvas の大きさは変えない）
+// =====================================================================
+const SNAPS = ['peek', 'half', 'full'], appEl = $('app'), panelEl = $('panel');
+let sheetSnap = 'peek', peekPx = 122, coverNow = 0, coverTarget = 0, drawerOpen = false, suppressClick = false;
+const uiMode = () => mqLand.matches ? 'land' : mqCompact.matches ? 'port' : 'desk';
+// 見えている範囲の縦横比（カメラの距離と画角を決めるのに使う）
+function visAspect() {
+  const w = wrapEl.clientWidth, h = wrapEl.clientHeight, m = uiMode();
+  return m === 'land' ? Math.max(120, w - coverTarget) / h : m === 'port' ? w / Math.max(120, h - coverTarget) : w / h;
+}
+function applyViewOffset() {
+  const w = wrapEl.clientWidth, h = wrapEl.clientHeight, m = uiMode();
+  if (m === 'port' && coverNow > 0.5) camera.setViewOffset(w, h, 0, coverNow / 2, w, h);
+  else if (m === 'land' && coverNow > 0.5) camera.setViewOffset(w, h, coverNow / 2, 0, w, h);
+  else if (camera.view) camera.clearViewOffset();
+}
+function stepCover(dt) {
+  if (coverNow === coverTarget) return;
+  coverNow = reduceMotion.matches || Math.abs(coverTarget - coverNow) < 0.6 ? coverTarget : coverNow + (coverTarget - coverNow) * Math.min(1, dt * 13);
+  applyViewOffset();
+}
+const snapHeight = s => s === 'peek' ? peekPx : s === 'half' ? Math.round(appEl.clientHeight * 0.54) : appEl.clientHeight - 56;
+function setCover(px, instant) {
+  coverTarget = Math.max(0, px); if (instant) { coverNow = coverTarget; applyViewOffset(); }
+  wrapEl.style.setProperty('--cover', (uiMode() === 'port' ? coverTarget : 0) + 'px');
+}
+function measurePeek() {         // 要約の実際の高さを測り、舞台の下端をそこに合わせる
+  if (uiMode() !== 'port' || sheetSnap !== 'peek') return;
+  const h = $('sheetHandle').offsetHeight + $('peek').offsetHeight;
+  if (h > 60 && Math.abs(h - peekPx) > 0.5) { peekPx = h; document.documentElement.style.setProperty('--peek-h', h + 'px'); }
+}
+function setSnap(s, instant) {
+  sheetSnap = s; panelEl.dataset.snap = s; appEl.dataset.snap = s; panelEl.style.removeProperty('--sheet-h');
+  panelEl.classList.remove('dragging'); appEl.classList.remove('dragging');
+  $('sheetHandle').setAttribute('aria-expanded', s !== 'peek');
+  if (uiMode() !== 'port') return;
+  measurePeek(); setCover(snapHeight(s) - peekPx, instant);
+  if (s !== 'peek') requestAnimationFrame(() => { updateCharts(); if (logView === 'fids') updateFids(); });
+  if (!camUser && !tourOn) goCam(camName, instant);          // 見える範囲が変わるので、構図を合わせ直す
+}
+function setDrawer(open, instant) {
+  drawerOpen = open; panelEl.classList.toggle('open', open); appEl.classList.toggle('drawer-open', open);
+  $('drawerBtn').textContent = open ? '閉じる' : '指標'; $('drawerBtn').setAttribute('aria-expanded', open);
+  if (uiMode() !== 'land') return;
+  setCover(open ? panelEl.offsetWidth : 0, instant);
+  if (open) requestAnimationFrame(() => updateCharts());
+  if (!camUser && !tourOn) goCam(camName, instant);
+}
+// 画面の型が変わったとき（回転・幅の変更）に、部品の置き場所と状態を合わせる
+function applyLayout() {
+  const m = uiMode(); placeControls();
+  if (m === 'port') { panelEl.classList.remove('open'); setSnap(sheetSnap, true); requestAnimationFrame(() => { measurePeek(); setCover(snapHeight(sheetSnap) - peekPx, true); onResize(); }); }
+  else if (m === 'land') { setDrawer(drawerOpen, true); }
+  else { panelEl.classList.remove('open'); setCover(0, true); }
+  onResize(); if (!camUser) goCam(camName, true);
+}
+function bindMobile() {
+  // ---- シートのつまみ: ドラッグで高さを変え、離したときに近い段へ寄せる。タップでは 1 段ずつ切り替える ----
+  let drag = null;
+  const down = e => { if (uiMode() !== 'port' || (e.button !== undefined && e.button > 0)) return; drag = { y: e.clientY, h: panelEl.getBoundingClientRect().height, moved: false, from: sheetSnap }; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* 合成イベントなど、捕捉できない場合はそのまま続ける */ } };
+  const move = e => {
+    if (!drag) return; const dy = drag.y - e.clientY;
+    if (!drag.moved && Math.abs(dy) < 7) return;
+    if (!drag.moved) { drag.moved = true; panelEl.classList.add('dragging'); appEl.classList.add('dragging'); if (sheetSnap === 'peek') { panelEl.dataset.snap = 'half'; appEl.dataset.snap = 'half'; } }
+    const h = clamp(drag.h + dy, peekPx, appEl.clientHeight - 56); drag.cur = h; panelEl.style.setProperty('--sheet-h', h + 'px'); setCover(h - peekPx, true);
+  };
+  const up = () => {
+    if (!drag) return; const d = drag; drag = null; if (!d.moved) return;
+    suppressClick = true; setTimeout(() => { suppressClick = false; }, 350);
+    let best = d.from, bd = 1e9; for (const s of SNAPS) { const dd = Math.abs(snapHeight(s) - d.cur); if (dd < bd) { bd = dd; best = s; } }
+    if (best === d.from && Math.abs(d.cur - d.h) > 44) best = SNAPS[clamp(SNAPS.indexOf(d.from) + (d.cur > d.h ? 1 : -1), 0, 2)];      // 少しだけ動かしたときは、動かした向きへ 1 段
+    sheetSnap = best; setSnap(best);
+  };
+  for (const el of [$('sheetHandle'), $('peek')]) { el.addEventListener('pointerdown', down); el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up); }
+  $('sheetHandle').addEventListener('click', () => { if (suppressClick || uiMode() !== 'port') return; setSnap(SNAPS[(SNAPS.indexOf(sheetSnap) + 1) % 3]); });
+  $('peek').addEventListener('click', () => { if (!suppressClick && uiMode() === 'port') setSnap('half'); });
+  $('drawerBtn').addEventListener('click', () => setDrawer(!drawerOpen));
+  // ---- 舞台の 1 行の操作 ----
+  $('mPlay').addEventListener('click', () => setPlaying(!playing));
+  $('mSpeed').addEventListener('click', () => $('spd' + (speed === 1 ? 2 : speed === 2 ? 4 : 1)).click());
+  const order = ['all', 'lobby', 'sec', 'bhs', 'apron'];
+  $('mCam').addEventListener('click', () => { if (tourOn) setTour(false); goCam(order[(order.indexOf(camName) + 1) % order.length]); });
+  $('mTour').addEventListener('click', () => setTour(!tourOn));
+  mqCompact.addEventListener('change', applyLayout); mqLand.addEventListener('change', applyLayout);
+  // タブレットの縦向きは最初から半分まで開く。スマホは 3D を主役にして要約だけにする
+  sheetSnap = Math.min(appEl.clientWidth, appEl.clientHeight) >= 600 ? 'half' : 'peek';
+  applyLayout();
+}

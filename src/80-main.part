@@ -3,9 +3,10 @@
 // =====================================================================
 function onResize() {
   const w = Math.max(1, wrapEl.clientWidth), h = Math.max(1, wrapEl.clientHeight);
-  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); renderer.setSize(w, h, false); labelRenderer.setSize(w, h);
-  camera.aspect = w / h; camera.updateProjectionMatrix();
-  $('caption').style.bottom = ($('dock').offsetHeight + (isNarrow.matches ? 14 : 26)) + 'px';      // ツアーの説明は操作の帯のすぐ上に置く
+  renderer.setPixelRatio(Math.min(PR_MAX, window.devicePixelRatio || 1)); renderer.setSize(w, h, false); labelRenderer.setSize(w, h);
+  // 縦長の画面では画角を広げる（横方向の視野が狭くなりすぎないように）
+  camera.aspect = w / h; camera.fov = camera.aspect < 1 ? Math.min(50, 34 + (1 - camera.aspect) * 32) : 34; camera.updateProjectionMatrix(); applyViewOffset();
+  $('caption').style.bottom = isNarrow.matches ? '' : ($('dock').offsetHeight + 26) + 'px';      // PC: ツアーの説明は操作の帯のすぐ上に置く（スマホは CSS で決める）
   if (sims) updateCharts();
 }
 function applyThemeAll() { applyTheme(); setUpperOpacity(upperGhost); if (sims) { updateCharts(); updateFlows(sims[active]); } }
@@ -27,7 +28,7 @@ function tick(dtReal) {
   }
   const sim = sims[active];
   updateFlows(sim); updateHeat(sim, false); updateAircraft(sim, world); updateTrack(sim);
-  stepTour(dtReal); stepCamera(dtReal); controls.update();
+  stepTour(dtReal); stepCamera(dtReal); stepCover(dtReal); controls.update();
   const cd = camera.position.distanceTo(controls.target); scene.fog.near = cd * (TH.dark ? 1.0 : 1.25) + 260; scene.fog.far = cd * 2.4 + (TH.dark ? 1500 : 2600);   // 注視点までは霞ませない
   if (!reduceMotion.matches && playing) { waterTex.offset.x += dtReal * 0.004; waterTex.offset.y += dtReal * 0.0025; }
   if ((lblAcc += dtReal) > 0.2) { lblAcc = 0; updateLabelVisibility(); gRoof.visible = cd > 210; }
@@ -43,7 +44,7 @@ async function init() {
   await prewarm(START_AT, k => { bar.style.transform = `scaleX(${k.toFixed(3)})`; });
   buildSite(); buildLower(); buildUpper(); buildApron(); buildFlows(); buildHeat();
   applyTheme(); setUpperOpacity(0);
-  bindUi(); bindCamera(); onResize(); goCam('all', true); setMode(1, true);
+  bindUi(); bindCamera(); onResize(); bindMobile(); goCam('all', true); setMode(1, true);
   new ResizeObserver(onResize).observe(wrapEl);
   // テーマ: OS の設定の変化と、ビューアが付ける data-theme 属性の変化の両方に追従する
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyThemeAll);
@@ -55,6 +56,6 @@ async function init() {
   boot.hidden = true;
   if (!document.hidden) start();
 }
-window.__hf = { THREE, scene, camera, renderer, controls, tick, goCam, get sims() { return sims; }, get world() { return world; }, get active() { return active; } };   // 確認用（コンソールから状態を見る）
+window.__hf = { THREE, scene, camera, renderer, controls, tick, goCam, setSnap, setDrawer, get sims() { return sims; }, get world() { return world; }, get active() { return active; } };   // 確認用（コンソールから状態を見る）
 init().catch(err => { console.error(err); $('boot').hidden = false; $('bootMsg').textContent = '3D の初期化に失敗しました: ' + (err && err.message ? err.message : err); });
 </script>

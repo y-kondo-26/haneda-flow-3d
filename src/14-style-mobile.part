@@ -3,45 +3,85 @@
 @media (max-width: 1180px) { :root { --panel-w: 344px; } #modeSwitch button { min-width: 112px; padding-inline: 10px; } }
 @media (min-width: 861px) and (max-height: 760px) { .chart canvas { height: 84px; } }
 
-/* ---- スマホ幅: 上に舞台、下に計器盤のシート（タブ切替）---- */
-@media (max-width: 860px) {
-  #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(250px, 46%) minmax(0, 1fr); }
-  #topBar { top: 8px; right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column-reverse; gap: 6px; align-items: stretch; }
-  #ident { align-self: flex-start; }
-  #ticker { display: none; }
-  #modeSwitch button { flex: 1; min-width: 0; font-size: 13px; padding: 6px 4px 5px; }
-  #ident .ttl { display: none; }
-  #ident .code { padding: 4px 7px 3px; } #ident .code b { font-size: 15px; } #ident .code span { font-size: 8.5px; }
-  #ident .clock { padding: 2px 8px 1px; border-left: 0; } #clock { font-size: 17px; } #ident .clock span { font-size: 9px; }
-  #stageWrap > #legend { display: none; }
-  #dock { left: 0; right: 0; bottom: 6px; gap: 5px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
-  #dock .bar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; width: 100%; }
-  #dock .bar::-webkit-scrollbar { display: none; }
-  #dock .bar .cap { display: none; }
-  .chip { padding: 6px 9px 5px; min-height: 32px; font-size: 12px; }
-  #caption { padding: 7px 10px 6px; } #caption b { font-size: 12px; } #caption span { font-size: 11px; }
-  #toast { top: 104px; left: auto; right: max(16px, env(safe-area-inset-right, 0px)); transform: none; max-width: 62%; font-size: 11.5px; }
-  .lbl { font-size: 10px; padding: 1px 4px; } .lbl.major { font-size: 10.5px; } .lbl small { font-size: 9px; }
+/* ==== スマホ・タブレット縦（幅 860px 以下）と横向きスマホ（高さ 500px 以下）に共通 ====
+   3D を全面に出し、指標は必要なときだけ広げる。操作は 44px 以上の大きさにする */
+@media (max-width: 860px), (max-height: 500px) and (max-width: 1000px) and (orientation: landscape) {
+  #app { display: block; position: relative; overflow: hidden; }
+  #dock, #ticker, #stageWrap > #legend, #note { display: none; }
+  #ident .ttl, #ident .clock span, #modeSwitch button small { display: none; }
+  #topBar { display: flex; gap: 6px; align-items: stretch; top: 6px; left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); }
+  #ident .code { padding: 0 8px; } #ident .code b { font-size: 15px; } #ident .code span { font-size: 8.5px; }
+  #ident .clock { padding: 0 9px; border-left: 0; } #clock { font-size: 19px; }
+  #modeSwitch { padding: 0; gap: 0; flex: 1; min-width: 0; }
+  #modeSwitch button { flex: 1; min-width: 0; min-height: 44px; font-size: 13.5px; padding: 0 4px; justify-content: center; }
+  /* 再生・速度・カメラ・ツアーを 1 行にまとめる（細かい操作はシートの「操作」タブ） */
+  #miniBar { display: flex; gap: 6px; position: absolute; left: max(8px, env(safe-area-inset-left, 0px)); bottom: calc(var(--cover, 0px) + 8px); z-index: 2; transition: bottom .26s cubic-bezier(.2, .8, .2, 1), opacity .2s; }
+  #app.dragging #miniBar, #app.dragging #caption { transition: none; }
+  #miniBar button { min-width: 44px; min-height: 44px; padding: 0 11px; display: flex; align-items: center; justify-content: center; gap: 3px; background: var(--glass); border: 1px solid var(--line);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); font-size: 12.5px; font-weight: 700; color: var(--ink); white-space: nowrap; }
+  #miniBar svg { width: 13px; height: 13px; fill: currentColor; }
+  #miniBar small { font-size: 9.5px; font-weight: 400; color: var(--ink-2); }
+  #miniBar #mCam { flex-direction: column; align-items: flex-start; gap: 0; line-height: 1.2; min-width: 92px; }
+  #miniBar #mTour[aria-pressed="true"] { background: var(--plate); color: var(--plate-ink); border-color: var(--plate); }
+  #caption { left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); transform: none; width: auto; bottom: calc(var(--cover, 0px) + 60px); padding: 7px 10px 6px; transition: bottom .26s cubic-bezier(.2, .8, .2, 1); }
+  #caption b { font-size: 12px; } #caption span { font-size: 11.5px; }
+  #toast { top: 58px; left: max(8px, env(safe-area-inset-left, 0px)); right: max(8px, env(safe-area-inset-right, 0px)); transform: none; max-width: none; font-size: 12px; }
+  /* ラベルは小さく・短く（「保安」と実測値の一部を省く。数は JS で絞る） */
+  .lbl { font-size: 9.5px; padding: 1px 4px 0; } .lbl.major { font-size: 10px; } .lbl small { font-size: 9px; } .lbl .lg { display: none; }
+  .lbl.track small { white-space: normal; max-width: 170px; }
 
-  #panel { border-left: 0; border-top: 1px solid var(--line); }
-  #tabs { display: flex; border-bottom: 1px solid var(--line); padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); flex: none; }
-  #tabs button { flex: 1; font-size: 12.5px; font-weight: 700; padding: 9px 2px 7px; color: var(--ink-2); border-bottom: 3px solid transparent; margin-bottom: -1px; min-height: 40px; }
+  #panel { border-left: 0; z-index: 6; }
+  #tabs { display: flex; flex: none; border-bottom: 1px solid var(--line); padding: 0 max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px)); }
+  #tabs button { flex: 1; font-size: 13px; font-weight: 700; padding: 0 2px; color: var(--ink-2); border-bottom: 3px solid transparent; margin-bottom: -1px; min-height: 44px; }
   #tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--sign); }
-  #panelBody { padding: 10px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); gap: 10px; }
+  #panelBody { padding: 10px max(16px, env(safe-area-inset-right, 0px)) 14px max(16px, env(safe-area-inset-left, 0px)); gap: 10px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   #panel .sec { display: none; }
   #panel[data-tab="kpi"] #secKpi, #panel[data-tab="chart"] #secChart, #panel[data-tab="log"] #secLog, #panel[data-tab="ctl"] #secCtl { display: block; }
-  #secCtl .bar { background: none; border: 0; padding: 0; backdrop-filter: none; -webkit-backdrop-filter: none; gap: 6px; margin-bottom: 12px; }
-  #secCtl .bar .cap { flex-basis: 100%; padding: 0; font-size: 11px; font-weight: 700; }
+  .seg { flex: none; } .seg button { min-height: 44px; padding: 0 12px; font-size: 12px; white-space: nowrap; }
+  .sec > h2 { align-items: center; }
+  #secCtl .bar { background: none; border: 0; padding: 0; backdrop-filter: none; -webkit-backdrop-filter: none; gap: 8px; margin-bottom: 14px; }
+  #secCtl .bar .cap { flex-basis: 100%; padding: 0; font-size: 11.5px; font-weight: 700; }
   #secCtl .bar .sep { display: none; }
-  #secCtl .chip { border-color: var(--line); min-height: 36px; padding-inline: 12px; }
-  #secCtl #legend { position: static; background: none; border: 0; padding: 0; backdrop-filter: none; -webkit-backdrop-filter: none; font-size: 12px; }
-  #secCtl #legend summary { font-size: 11px; color: var(--ink-2); }
+  #secCtl #camBar::before, #secCtl #timeBar::before { flex-basis: 100%; font-size: 11.5px; font-weight: 700; color: var(--ink-2); }
+  #secCtl #camBar::before { content: "カメラ"; } #secCtl #timeBar::before { content: "再生と速度"; }
+  #secCtl #timeBar .cap { flex-basis: auto; font-weight: 400; align-self: center; padding: 0 2px 0 6px; }
+  #secCtl .chip { border-color: var(--line); min-height: 44px; padding: 0 14px; font-size: 13px; }
+  #secCtl #btnPlay { width: 48px; padding: 0; }
   #secCtl #ctlBars { display: block; }
-  #note { font-size: 10px; padding: 5px max(16px, env(safe-area-inset-right, 0px)) calc(5px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
-  #note span { display: none; }
+  #secCtl #legend { position: static; background: none; border: 0; padding: 0; backdrop-filter: none; -webkit-backdrop-filter: none; font-size: 12.5px; }
+  #secCtl #legend summary { font-size: 11.5px; color: var(--ink-2); min-height: 44px; }
+  #secCtl #legend li { padding: 2px 0; }
+  #note2 { display: block; font-size: 10.5px; line-height: 1.5; color: var(--ink-3); border-top: 1px solid var(--line); padding-top: 8px; }
   #headline strong { font-size: 15px; } #headline strong em { font-size: 22px; }
-  .chart canvas { height: 96px; }
+  .chart canvas { height: 132px; }
+  #fids li, #log li { font-size: 12.5px; }
 }
-@media (max-width: 860px) and (max-height: 560px) { #app { grid-template-rows: minmax(200px, 52%) minmax(0, 1fr); } #ident { display: none; } }
-@media (prefers-reduced-motion: reduce) { #worldFlash.on { animation: none; } .lbl, #toast { transition: none; } }
+
+/* ==== 縦向き: 下から引き出すシート。高さは 3 段（要約だけ / 半分 / ほぼ全面）==== */
+@media (max-width: 860px) and (min-height: 501px), (max-width: 860px) and (orientation: portrait) {
+  :root { --peek-h: 122px; }
+  #stageWrap { position: absolute; inset: 0 0 var(--peek-h) 0; }
+  #panel { position: absolute; left: 0; right: 0; bottom: 0; height: var(--sheet-h, var(--peek-h)); max-height: calc(100% - 56px); border-top: 1px solid var(--line);
+    box-shadow: 0 -8px 22px rgba(10, 20, 30, .16); transition: height .26s cubic-bezier(.2, .8, .2, 1); }
+  #panel.dragging { transition: none; }
+  #panel[data-snap="half"] { --sheet-h: 54%; }
+  #panel[data-snap="full"] { --sheet-h: 100%; }
+  #sheetHandle { display: block; flex: none; position: relative; width: 100%; height: 22px; touch-action: none; cursor: grab; }
+  #sheetHandle i { position: absolute; left: 50%; top: 9px; width: 40px; height: 4px; margin-left: -20px; border-radius: 2px; background: var(--ink-3); }
+  #sheetHandle::before { content: ""; position: absolute; left: 24%; right: 24%; top: -16px; bottom: -6px; }      /* 押せる範囲を 44px に広げる */
+  #peek { display: block; flex: none; padding: 0 max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); touch-action: none; cursor: grab; }
+  #panel:not([data-snap="peek"]) #peek, #panel[data-snap="peek"] #tabs, #panel[data-snap="peek"] #panelBody { display: none; }
+  #pkMain { font-size: 15px; font-weight: 700; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #pkMain em { font-style: normal; font-family: var(--font-num); font-size: 21px; margin-left: 4px; }
+  #pkMain em.good { color: var(--good); } #pkMain em.bad { color: var(--bad); }
+  #pkStats { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; margin: 5px 0 4px; }
+  #pkStats div { border-left: 2px solid var(--line); padding-left: 8px; min-width: 0; }
+  #pkStats dt { font-size: 10.5px; color: var(--ink-2); white-space: nowrap; } #pkStats dt small { font-size: 9.5px; color: var(--ink-3); margin-left: 4px; }
+  #pkStats dd { margin: 0; font-size: 17px; line-height: 1.25; white-space: nowrap; display: flex; align-items: baseline; gap: 4px; }
+  #pkStats dd span { color: var(--ink-2); font-size: 14px; } #pkStats dd i { font-style: normal; font-size: 11px; color: var(--ink-3); } #pkStats dd b.good { color: var(--good); } #pkStats dd b.bad { color: var(--bad); }
+  #pkNote { font-size: 9.5px; color: var(--ink-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #app[data-snap="full"] #miniBar { opacity: 0; pointer-events: none; }
+  #panel[data-snap="full"] .chart canvas { height: 170px; }
+}
+@media (prefers-reduced-motion: reduce) { #worldFlash.on { animation: none; } .lbl, #toast, #panel, #miniBar, #caption { transition: none !important; } }
 </style>
