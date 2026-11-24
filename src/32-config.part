@@ -1,0 +1,93 @@
+// =====================================================================
+// 32 config : レイアウトとシミュレーションの定数（three.js / DOM に依存しない）
+// 座標: x = 西(-)→東(+)、z = エアサイド(-)→ランドサイド(+)、y = 上
+// =====================================================================
+const DAY0 = 300;            // 05:00（分）
+const DAY1 = 1440;           // 24:00
+const YU = 12, YL = 0;       // 上階（出発）/ 下階（手荷物）の床高さ
+
+const LAY = {
+  X0: -172, X1: 172, ZA: -14, ZL: 84,
+  doors: [
+    { x: -112, z: 86, name: '北口' }, { x: 0, z: 86, name: '中央口' }, { x: 112, z: 86, name: '南口' },
+    { x: 174, z: 62, name: '駅連絡通路', station: true },
+  ],
+  doorShare: [0.17, 0.22, 0.16, 0.45],
+  islands: [-125, -75, -25, 25, 75, 125].map((x, i) => ({ x, z0: 53, z1: 69, name: 'ABCDEF'[i] })),
+  dropsPerIsland: 10,
+  cps: [-104, 0, 104].map((x, i) => ({ x, name: 'ABC'[i] })),
+  cpLanes: 6, laneGap: 4.2,
+  zQ: 44.5,        // 待ち行列の先頭
+  zLaneIn: 41, zLaneOut: 27,
+  zImm: 16,        // 顔認証ゲート
+  immGates: 7,
+  zConc: -2,       // コンコース中心
+  // 105〜112 は搭乗橋つきの固定ゲート。9 番目は臨時便用のバスゲートとオープンスポット
+  gates: [-140, -100, -60, -20, 20, 60, 100, 140].map((x, i) => ({ x, no: 105 + i, sx: x })).concat([{ x: 156, no: 131, sx: 212, remote: true }]),
+  zGate: -13,
+  standNoseZ: -40,
+};
+
+// ---- 下階（BHS: baggage handling system）----
+const BHS = {
+  edsX: [-72, 0, 72],
+  zCollector: 61, zCross: 51, zEdsIn: 47, zEdsOut: 39,
+  loop: { a: 92, r: 8, zc: 26 },
+  lateralX: Array.from({ length: 12 }, (_, k) => 77 - 14 * k),
+  zLat0: 15, zLat1: 3,           // シュート下端〜ラテラル末端
+  zTrain: -5,
+  ebs: { x0: -162, x1: -112, z0: 8, z1: 44, cols: 14, rows: 11, levels: 4 },
+  mes: { x: 116, z: 26 },
+  hold: { x0: 108, x1: 150, z0: 0, z1: 12 },     // 従来運用の手作業仮置き
+  zRoad: -25,
+  xferIn: { x: 150, z: 34 },                      // 乗り継ぎ手荷物の投入口
+  claim: [{ x: -100, z: 72 }, { x: -50, z: 72 }],  // 到着ターンテーブル
+  arrIn: { x: -166, z: -6 },
+};
+BHS.loop.L = 4 * BHS.loop.a + 2 * Math.PI * BHS.loop.r;
+BHS.uEds = BHS.edsX.map(x => x + BHS.loop.a);
+BHS.uMes = 2 * BHS.loop.a + Math.PI * BHS.loop.r / 2;
+BHS.uLat = BHS.lateralX.map(x => 2 * BHS.loop.a + Math.PI * BHS.loop.r + (BHS.loop.a - x));
+BHS.uEbs = 4 * BHS.loop.a + Math.PI * BHS.loop.r * 1.5;
+BHS.uXfer = 2 * BHS.loop.a - 4;
+
+function loopPos(u, out) {
+  const { a, r, zc, L } = BHS.loop; u = ((u % L) + L) % L;
+  const pr = Math.PI * r;
+  if (u < 2 * a) { out.x = -a + u; out.z = zc + r; }
+  else if (u < 2 * a + pr) { const t = (u - 2 * a) / r; out.x = a + r * Math.sin(t); out.z = zc + r * Math.cos(t); }
+  else if (u < 4 * a + pr) { out.x = a - (u - 2 * a - pr); out.z = zc - r; }
+  else { const t = (u - 4 * a - pr) / r; out.x = -a - r * Math.sin(t); out.z = zc - r * Math.cos(t); }
+  return out;
+}
+
+// ---- 速度（表示のために歩行・搬送を実際より遅くしている。単位 = ワールド単位/分）----
+const SPD = { walk: 22, belt: 34, loop: 62, tug: 70, chute: 30 };
+
+// ---- 処理能力・運用ルール ----
+const P = {
+  secSvcMean: 0.50,        // 保安検査 1 レーン 1 人あたり（分）→ 約 120 人/時
+  staffPerLane: 5,         // 1 レーンの要員（人時の換算用）
+  laneLead: 20,            // レーン開閉の指示から実施まで（分）。両モード共通
+  dropSvcMean: 1.25,       // 自動手荷物預け機 1 台 1 人あたり（分）
+  immSvcMean: 0.22,        // 顔認証ゲート 1 台 1 人あたり（分）
+  edsSvc: 0.135,           // EDS 1 ライン 1 個あたり（分）→ 約 440 個/時
+  edsL2: 0.12, edsL2Time: 1.6, edsL3: 0.012, edsL3Time: 8,
+  readBarcode: 0.952, readRfid: 0.998,
+  missortBarcode: 0.004, missortRfid: 0.0004,
+  mesStations: 2, mesSvc: 2.3,
+  loopCap: 330,            // ソーターのトレイ数（同時に載る手荷物の上限）
+  latCap: 36,              // ラテラル 1 本に滞留できる個数
+  loadRate: 7,             // メイクアップの積み付け（個/分）
+  trainCap: 120,           // ドーリー 4 台の合計
+  tugs: 8,
+  roster: [0.9, 0],         // 従来運用の人員計画: レーン数 = ceil(1 時間の到着見込み × 処理時間 × 係数 + 上乗せ)
+  acLoadRate: 12,          // 機側での搭載（個/分）
+  holdClose: 8,            // 貨物室を閉める時刻（出発の何分前）
+  bagDropClose: 45,        // 預け入れ締切（出発の何分前）
+  gateClose: 10, boardStart: 32, boardRate: 14,
+  base: { latOpen: 120, train1: 52, final: 25, holdAfterLaps: 3, holdMis: 0.012, edsSwitch: 8 },
+  ai: { ebsRelease: 80, comply: 0.6, complyFault: 0.78, margin: 1.2 },
+};
+
+const hhmm = m => { m = Math.max(0, Math.round(m)); return String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };

@@ -1,0 +1,105 @@
+// =====================================================================
+// 56 scene (エプロン) : 無塗装の汎用機・搭乗橋・スポットの標示・夜間の灯火
+// =====================================================================
+const mAircraft = M('s-aircraft', { roughness: 0.55 });
+const DOOR_Y = 4.4;                                   // 機体ドアの床高さ（搭乗橋の先端）
+function aircraftGeometry() {
+  const parts = [], add = g => parts.push(g.index ? g.toNonIndexed() : g);
+  const ex = (pts, depth) => new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(p => new THREE.Vector2(p[0], p[1]))), { depth, bevelEnabled: false });
+  add(new THREE.CapsuleGeometry(2.45, 27, 8, 20).rotateX(Math.PI / 2).translate(0, 4.6, 3));                       // 胴体
+  add(new THREE.CylinderGeometry(0.55, 2.45, 10.5, 20).rotateX(-Math.PI / 2).translate(0, 5.2, -16.6));            // 尾部
+  for (const s of [1, -1]) {
+    const wing = ex([[2 * s, 5.4], [19.5 * s, -7.6], [19.5 * s, -10.2], [2 * s, -5]], 0.55).rotateX(Math.PI / 2).translate(0, 3.9, 0); add(wing);   // 主翼（後退角つき）
+    add(ex([[1 * s, -15.6], [7.6 * s, -20], [7.6 * s, -21.8], [1 * s, -20.6]], 0.35).rotateX(Math.PI / 2).translate(0, 5.6, 0));                 // 水平尾翼
+    add(new THREE.CylinderGeometry(1.35, 1.2, 4.8, 16).rotateX(Math.PI / 2).translate(7.2 * s, 2.2, 0.6));                                  // エンジン
+    add(new THREE.BoxGeometry(0.5, 1.4, 2.6).translate(7.2 * s, 3.2, -0.6));
+    add(new THREE.BoxGeometry(0.9, 2.3, 2.2).translate(3 * s, 1.15, -3.2));                                                                // 主脚
+  }
+  add(new THREE.BoxGeometry(0.6, 2.3, 1).translate(0, 1.15, 13));
+  add(ex([[-14.5, 6.4], [-20.4, 14.6], [-23, 14.6], [-21, 6.4]], 0.4).rotateY(-Math.PI / 2).translate(0.2, 0, 0));                           // 垂直尾翼
+  const g = mergeGeometries(parts, false); g.computeVertexNormals(); return g;
+}
+function beam(mat, a, b, w, h) {                       // 2 点を結ぶ角材（搭乗橋など）
+  const dir = new THREE.Vector3().subVectors(b, a), len = dir.length(), g = new THREE.BoxGeometry(w, h, len);
+  g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.normalize())); g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2); return addGeo(mat, g);
+}
+const aircraft = [], runwayAc = [];
+let nightPts = null, floodDecals = [];
+const dotTex = canvasTex(64, 64, (g, w) => { const r = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.25, 'rgba(255,255,255,.55)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, w, w); });
+
+function buildApron() {
+  const acGeo = aircraftGeometry();
+  LAY.gates.forEach((g, gi) => {
+    const ac = new THREE.Mesh(acGeo, mAircraft); ac.castShadow = true; ac.receiveShadow = false; ac.position.set(g.sx, 0, LAY.standNoseZ - 20.5); ac.visible = false; gApron.add(ac); aircraft.push(ac);
+    strip(mMark, g.sx, -30, g.sx, -112, 0.45, 0.07); strip(mMark, g.sx - 3, LAY.standNoseZ + 4.5, g.sx + 3, LAY.standNoseZ + 4.5, 0.45, 0.07);
+    for (const s of [-1, 1]) strip(mMark, g.sx + s * 19.6, -34, g.sx + s * 19.6, -90, 0.2, 0.07);
+    addLabel(g.remote ? `オープンスポット <span class="num">201</span>` : `スポット <span class="num">${g.no}</span>`, g.sx, 1.5, -96, 'rw', 3);
+    if (g.remote) return;
+    // 搭乗橋: 固定橋 → ロタンダ → 伸縮トンネル → キャブ
+    const y0 = YU + 1.35, rot = new THREE.Vector3(g.x + 8, y0, -24.5), cab = new THREE.Vector3(g.x + 4.6, DOOR_Y + 1.35, LAY.standNoseZ - 5.5);
+    beam(mBldg, new THREE.Vector3(g.x + 8, y0, LAY.ZA), rot, 2.5, 2.7); cyl(mBldg, 2.3, 3.1, rot.x, y0, rot.z, 16); box(mBldg2, 1, y0 - 1.5, 1, rot.x, (y0 - 1.5) / 2, rot.z);
+    beam(mBldg, rot, cab, 2.3, 2.5); box(mMachine, 3, 2.8, 3, cab.x - 0.2, cab.y, cab.z); box(mBldg2, 0.6, cab.y - 1.4, 0.6, cab.x + 1.5, (cab.y - 1.4) / 2, cab.z + 3.5); box(mEdge, 3.4, 0.6, 1.4, cab.x + 1.5, 0.3, cab.z + 3.5);
+  });
+  for (const z of [-21.5, -28.5]) strip(mMark, -176, z, 218, z, 0.25, 0.07);
+  for (let x = -176; x < 218; x += 6) strip(mMark, x, BHS.zRoad, x + 3, BHS.zRoad, 0.2, 0.07);
+  strip(mMark, -200, -118, 236, -118, 0.45, 0.07);
+  for (const x of [-185, -95, 0, 95, 185]) { box(mEdge, 0.5, 27, 0.5, x, 13.5, -19.5); box(mEdge, 3, 0.6, 1.2, x, 27, -20.2); }                // 照明柱
+  const ms = flush(gApron, { cast: true, receive: true }); for (const m of ms) if (m.material === mMark) m.castShadow = false;
+  for (let i = 0; i < 2; i++) { const ac = new THREE.Mesh(acGeo, mAircraft); ac.visible = false; ac.rotation.order = 'YXZ'; gApron.add(ac); runwayAc.push({ mesh: ac, t0: -1, kind: 0 }); }
+
+  // ---- 夜間の灯火（ダークテーマだけ表示）----
+  const pos = [], col = [], C = (r, g, b) => [r, g, b], put = (x, y, z, c) => { pos.push(x, y, z); col.push(c[0], c[1], c[2]); };
+  const white = C(1, 0.93, 0.78), green = C(0.2, 1, 0.5), blue = C(0.25, 0.5, 1), red = C(1, 0.2, 0.15), amber = C(1, 0.72, 0.3);
+  for (const r of RUNWAYS) {
+    const cs = Math.cos(r.rot), sn = Math.sin(r.rot), P2 = (l, o) => [r.x + l * cs + o * sn, r.z - l * sn + o * cs];
+    for (let l = -r.len / 2; l <= r.len / 2; l += 18) { for (const o of [-12.6, 12.6]) { const p = P2(l, o); put(p[0], 0.5, p[1], white); } }
+    for (let l = -r.len / 2 + 9; l <= r.len / 2; l += 9) { const p = P2(l, 0); put(p[0], 0.4, p[1], l > r.len / 2 - 90 ? red : white); }
+    for (let o = -11; o <= 11; o += 2.2) { let p = P2(-r.len / 2 - 1, o); put(p[0], 0.5, p[1], green); p = P2(r.len / 2 + 1, o); put(p[0], 0.5, p[1], red); }
+    for (let l = 10; l < 110; l += 10) { const p = P2(-r.len / 2 - l, 0); put(p[0], 0.6, p[1], white); }                                        // 進入灯
+  }
+  for (const z of [-168, -256]) for (let x = -420; x <= 520; x += 11) { put(x, 0.4, z, green); if (((x + 420) / 11) % 2 === 0) { put(x, 0.4, z - 9.4, blue); put(x, 0.4, z + 9.4, blue); } }
+  for (const x of [-360, -150, 60, 270, 470]) for (let z = -205; z <= -145; z += 10) put(x, 0.4, z, green);
+  for (let x = -200; x <= 236; x += 12) put(x, 0.4, -118, green);
+  for (let x = LAY.X0; x <= LAY.X1; x += 8.6) { put(x, YU + 11, LAY.ZL + 0.5, amber); put(x, YU + 4.6, LAY.ZA - 0.2, amber); }
+  for (const x of [-185, -95, 0, 95, 185]) for (const dx of [-1, 0, 1]) put(x + dx, 27.4, -20.6, white);
+  for (let z = -20; z < 320; z += 17) put(208, YU + 10, z, amber);
+  const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); pg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  nightPts = new THREE.Points(pg, new THREE.PointsMaterial({ size: 5.5, map: dotTex, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true, fog: false }));
+  nightPts.frustumCulled = false; gNight.add(nightPts);
+  const floodTex = canvasTex(128, 128, (g, w) => { const r = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); r.addColorStop(0, 'rgba(255,236,200,.5)'); r.addColorStop(1, 'rgba(255,236,200,0)'); g.fillStyle = r; g.fillRect(0, 0, w, w); });
+  for (const x of [-185, -95, 0, 95, 185]) { const d = new THREE.Mesh(new THREE.PlaneGeometry(190, 150).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: floodTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.55 })); d.position.set(x, 0.2, -70); d.renderOrder = 1; gNight.add(d); }
+  themeHooks.push(() => { gNight.visible = TH.dark; mAircraft.emissive.set(TH.dark ? 0x1a222b : 0x000000); });
+}
+
+// 駐機・プッシュバック・離着陸を、便スケジュールと時計から決める
+function updateAircraft(sim, world) {
+  const t = sim.t; let moved = false;
+  for (let gi = 0; gi < LAY.gates.length; gi++) {
+    const ac = aircraft[gi], g = LAY.gates[gi]; let show = false, z = LAY.standNoseZ - 20.5, x = g.sx;
+    for (const f of world.flights) {
+      if (f.gate !== gi) continue;
+      const a = f.arr == null ? -1e9 : f.arr;
+      if (t >= a - 3 && t <= f.dep + 3.5) {
+        show = true;
+        if (t < a) z -= (a - t) / 3 * 78; else if (t > f.dep) { const k = (t - f.dep) / 3.5; z -= 78 * k * k; }
+        break;
+      }
+    }
+    if (ac.visible !== show || Math.abs(ac.position.z - z) > 0.01) moved = true;
+    ac.visible = show; ac.position.set(x, 0, z);
+  }
+  // 滑走路: 出発の 5 分後に A 滑走路から離陸、到着の 7 分前に C 滑走路へ着陸
+  for (let i = 0; i < 2; i++) {
+    const ra = runwayAc[i], m = ra.mesh, r = RUNWAYS[i ? 1 : 0]; let on = false;
+    for (const f of world.flights) {
+      const t0 = i ? (f.arr == null ? -1e9 : f.arr - 7) : f.dep + 5, k = (t - t0) / 2.6;
+      if (k < 0 || k > 1) continue;
+      on = true;
+      if (!i) { const s = k * k; m.position.set(r.x - r.len / 2 + 40 + s * 1100, Math.max(0, (s - 0.45)) * 420, r.z); m.rotation.set(s > 0.4 ? -Math.min(0.2, (s - 0.4) * 1.2) : 0, Math.PI / 2, 0); }
+      else { const s = 1 - (1 - k) * (1 - k); m.position.set(r.x + r.len / 2 + 300 - s * 1000, Math.max(0, 0.32 - s) * 300, r.z); m.rotation.set(s < 0.32 ? 0.05 : 0, -Math.PI / 2, 0); }
+      break;
+    }
+    m.visible = on;
+  }
+  if (moved) renderer.shadowMap.needsUpdate = true;
+}

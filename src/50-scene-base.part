@@ -1,0 +1,75 @@
+// =====================================================================
+// 50 scene (土台) : レンダラー・カメラ・照明・テーマ追従・ジオメトリ結合の道具
+// =====================================================================
+const $ = id => document.getElementById(id);
+const stageEl = $('stage'), wrapEl = $('stageWrap');
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const isNarrow = window.matchMedia('(max-width: 860px)');
+const renderer = new THREE.WebGLRenderer({ canvas: stageEl, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.shadowMap.autoUpdate = false;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(34, 1, 3, 5000);
+camera.position.set(-250, 215, 330);
+const controls = new OrbitControls(camera, stageEl);
+controls.enableDamping = true; controls.dampingFactor = 0.09; controls.maxPolarAngle = 1.46; controls.minDistance = 28; controls.maxDistance = 1500;
+controls.target.set(0, 4, 8); controls.zoomSpeed = 0.9; controls.rotateSpeed = 0.7;
+const labelRenderer = new CSS2DRenderer({ element: $('labels') });
+
+const hemi = new THREE.HemisphereLight(0xffffff, 0xcccccc, 1);
+const sun = new THREE.DirectionalLight(0xffffff, 1);
+sun.position.set(-170, 300, 210); sun.castShadow = true;
+sun.shadow.mapSize.set(isNarrow.matches ? 1024 : 2048, isNarrow.matches ? 1024 : 2048);
+Object.assign(sun.shadow.camera, { left: -290, right: 290, top: 190, bottom: -230, near: 50, far: 800 }); sun.shadow.camera.updateProjectionMatrix();
+sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.6; sun.shadow.radius = 3.5;
+scene.add(hemi, sun, sun.target);
+
+// ---- テーマ: CSS のトークンを唯一の色の定義にして、3D の材質へ写す ----
+const TOKENS = ['s-sky', 's-ground', 's-apron', 's-water', 's-water2', 's-bldg', 's-bldg2', 's-slab', 's-belt', 's-machine', 's-edge', 's-aircraft', 's-runway', 's-mark', 's-road', 's-glass',
+  'pax', 'pax-q', 'pax-x', 'pax-arr', 'bag', 'bag-re', 'bag-ng', 'bag-ebs', 'bag-arr', 'sign', 'ink', 'ink-2', 'ink-3', 'grid', 'base-c', 'ai-c', 'line', 'bad', 'good'];
+const TH = { dark: false, c: {}, css: {} };
+const themed = [];
+function M(key, opts = {}, Type = THREE.MeshStandardMaterial) {
+  const base = Type === THREE.MeshStandardMaterial ? { roughness: 1, metalness: 0 } : {};
+  const m = new Type({ ...base, ...opts }); themed.push({ m, key }); return m;
+}
+const themeHooks = [];
+function applyTheme() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of TOKENS) { const v = cs.getPropertyValue('--' + k).trim() || '#888'; TH.css[k] = v; TH.c[k] = new THREE.Color(v); }
+  const sky = TH.c['s-sky']; TH.dark = (sky.r + sky.g + sky.b) / 3 < 0.25;
+  for (const { m, key } of themed) { m.color.set(TH.c[key]); if (m.userData.emissiveKey) m.emissive.set(TH.c[m.userData.emissiveKey]); }
+  scene.background = sky.clone();
+  scene.fog = new THREE.Fog(sky.clone(), TH.dark ? 500 : 700, TH.dark ? 1900 : 2600);
+  if (TH.dark) { hemi.color.set(0x8fa8c8); hemi.groundColor.set(0x0a0f14); hemi.intensity = 1.25; sun.color.set(0xa9c0e6); sun.intensity = 0.85; }
+  else { hemi.color.set(0xffffff); hemi.groundColor.set(0xa9b3bc); hemi.intensity = 1.35; sun.color.set(0xfff3e0); sun.intensity = 2.0; }
+  for (const h of themeHooks) h();
+  renderer.shadowMap.needsUpdate = true;
+}
+
+// ---- 静的ジオメトリは材質ごとに 1 メッシュへ結合する（描画回数を抑える）----
+const buckets = new Map();
+function addGeo(mat, g) { if (!buckets.has(mat)) buckets.set(mat, []); buckets.get(mat).push(g.index ? g.toNonIndexed() : g); return g; }
+function box(mat, w, h, d, x, y, z, ry = 0) { const g = new THREE.BoxGeometry(w, h, d); if (ry) g.rotateY(ry); g.translate(x, y, z); return addGeo(mat, g); }
+function cyl(mat, r, h, x, y, z, seg = 16, r2 = r) { const g = new THREE.CylinderGeometry(r2, r, h, seg); g.translate(x, y, z); return addGeo(mat, g); }
+function flat(mat, w, d, x, y, z, ry = 0) { const g = new THREE.PlaneGeometry(w, d); g.rotateX(-Math.PI / 2); if (ry) g.rotateY(ry); g.translate(x, y, z); return addGeo(mat, g); }
+// 2 点を結ぶ帯（ベルト・路面標示など）
+function strip(mat, x0, z0, x1, z1, w, y, h = 0) {
+  const dx = x1 - x0, dz = z1 - z0, len = Math.hypot(dx, dz), ang = Math.atan2(dx, dz);
+  const g = h ? new THREE.BoxGeometry(w, h, len) : new THREE.PlaneGeometry(w, len).rotateX(-Math.PI / 2);
+  g.rotateY(ang); g.translate((x0 + x1) / 2, y + (h ? h / 2 : 0), (z0 + z1) / 2); return addGeo(mat, g);
+}
+function flush(parent, { cast = false, receive = true, order = 0 } = {}) {
+  const out = [];
+  for (const [mat, list] of buckets) {
+    const mesh = new THREE.Mesh(mergeGeometries(list, false), mat);
+    mesh.castShadow = cast && !mat.userData.noShadow; mesh.receiveShadow = receive; mesh.renderOrder = order; mesh.matrixAutoUpdate = false;
+    parent.add(mesh); out.push(mesh); for (const g of list) g.dispose();
+  }
+  buckets.clear(); return out;
+}
+function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; }
+
+const world3d = new THREE.Group(); scene.add(world3d);
+const gSite = new THREE.Group(), gLower = new THREE.Group(), gUpper = new THREE.Group(), gApron = new THREE.Group(), gNight = new THREE.Group();
+world3d.add(gSite, gLower, gUpper, gApron, gNight);

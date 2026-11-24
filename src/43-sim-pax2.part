@@ -1,0 +1,128 @@
+// =====================================================================
+// 43 sim (旅客の状態遷移・搭乗・到着・保安検査レーンの制御)
+// =====================================================================
+Sim.prototype.paxEvent = function (a, hit, t) {
+  switch (a.st) {
+    case S.WALK_DROP: if (hit) { a.st = S.Q_DROP; a.t0 = t; this.isl[a.k].q.push(a); } break;
+    case S.AT_DROP: if (t >= a.tEnd) { this.dropBags(a, a.k, a.lane); this.toSecurity(a); } break;
+    case S.WALK_SEC: if (hit) { const cp = this.cp[a.cp]; cp.enroute--; a.st = S.Q_SEC; a.t0 = t; cp.q.push(a); } break;
+    case S.IN_LANE: if (hit) {
+      a.spd = SPD.walk * (0.86 + 0.14 * (a.p.off + 1));
+      const rows = Math.floor(this.imm[a.cp].q.length / 12);
+      this.go(a, S.WALK_IMM, [[LAY.cps[a.cp].x + a.p.off * 6, LAY.zImm + 3.4 + rows * 1.15]]);
+    } break;
+    case S.WALK_IMM: if (hit) { a.st = S.Q_IMM; a.t0 = t; this.imm[a.cp].q.push(a); } break;
+    case S.AT_IMM: if (t >= a.tEnd) this.go(a, S.WALK_GATE, [[a.x, 10.5], [a.p.seatX, 6 + a.p.off * 1.4], [a.p.seatX, a.p.seatZ]]); break;
+    case S.WALK_GATE: if (hit) {
+      const fs = this.flightState(a.f.id);
+      if (t > a.f.dep - P.gateClose) { fs.missedPax++; this.kpi.missedPax++; return true; }
+      a.st = S.LOUNGE; fs.lounge.push(a);
+    } break;
+    case S.BOARD: if (hit) { this.flightState(a.f.id).boarded++; this.kpi.boarded++; return true; } break;
+    case S.ARR_WALK: if (hit) { a.lvl = 1; a.st = S.CLAIM; a.tEnd = Math.max(t, this.flightState(a.f.id).arrBagT) + 0.6 + 5 * a.u; } break;
+    case S.CLAIM: if (t >= a.tEnd) this.go(a, S.ARR_EXIT, [[a.x * 0.6 - 30, 82], [-76 + a.u * 8, 87]]); break;
+    case S.ARR_EXIT: if (hit) return true; break;
+  }
+  return false;
+};
+
+Sim.prototype.stepFlights = function (dt) {
+  const t = this.t, W = this.world;
+  for (const f of W.flights) {
+    if (t < (f.arr == null ? f.dep - 200 : f.arr) - 1 || t > f.dep + 6) continue;
+    const fs = this.flightState(f.id), g = LAY.gates[f.gate];
+    if (t >= f.dep - P.boardStart && t < f.dep - 1.5 && fs.lounge.length) {
+      fs.credit = Math.min(fs.credit + P.boardRate * dt, 4);
+      while (fs.credit >= 1 && fs.lounge.length) {
+        fs.credit--; const a = fs.lounge.shift();
+        if (g.remote) this.go(a, S.BOARD, [[g.x + 6 + a.p.off, -9], [g.x + 12, LAY.zGate + 0.6]]);     // バスゲート
+        else this.go(a, S.BOARD, [[g.x + 8 + a.p.off, LAY.zGate + 1.5], [g.x + 8, -23], [g.x + 3.4, LAY.standNoseZ - 5.5]]);
+      }
+    }
+    if (f.arr != null && f.paxIn > 0 && t >= f.arr + 4 && !fs.arrDone) {       // 到着旅客（描画するのは約半数）
+      const nArr = Math.round(f.paxIn * 0.5), want = Math.min(nArr, Math.floor((t - f.arr - 4) * 15));
+      while (fs.arrSpawn < want) {
+        const k = fs.arrSpawn++, u = ((k * 7919 + f.id * 104729) % 1000) / 1000, car = (f.gate + (k & 1)) % 2, ang = u * 6.283;
+        const c = BHS.claim[car];
+        const a = { p: { off: u * 2 - 1, xfer: false }, f, x: g.x + 3.4, z: LAY.standNoseZ - 5.5, lvl: 0, st: 0, tx: 0, tz: 0, wp: null, cp: -1, lane: -1, k: car, t0: 0, tEnd: 0, spd: SPD.walk * (0.9 + 0.25 * u), kind: 3, u, wait: 0 };
+        this.go(a, S.ARR_WALK, [[g.x + 8, -23], [g.x + 8, -12.6], [-168 + u * 1.6, -12.6], [-168 + u * 1.6, 58], [-168 + u * 1.6, 66], [c.x + Math.cos(ang) * (10 + 3 * u), c.z + Math.sin(ang) * (7.5 + 3 * u)]]);
+        this.pax.push(a);
+      }
+      if (fs.arrSpawn >= nArr) fs.arrDone = true;
+      if (!fs.arrBagT) { fs.arrBagT = f.arr + 19 + 8 * ((f.id * 37 % 10) / 10); this.spawnArrivalBags(f, fs); }
+    }
+    if (t >= f.dep && !fs.closed) { fs.closed = true; fs.missedPax += fs.lounge.length; this.kpi.missedPax += fs.lounge.length; this.closeFlight(f, fs); }
+  }
+};
+
+// 従来運用の人員計画: 当日朝の便スケジュールから作った 1 時間刻みの固定値（臨時便・当日の変動は反映しない）
+Sim.prototype.roster = function (t, c) {
+  const W = this.world, h = Math.floor(t / 60), key = h * 3 + c;
+  if (W.rosterCache[key] === undefined) {
+    const rate = this.predictSecRate(c, h * 60 + 6, 60, W.fcIsland0, W.fcTotal0);
+    W.rosterCache[key] = clamp(Math.ceil(rate * P.secSvcMean * P.roster[0] + P.roster[1]), 1, LAY.cpLanes);
+  }
+  return W.rosterCache[key];
+};
+// 検査場 c への到着見込み（人/分）。t0〜t0+win 分の平均
+Sim.prototype.predictSecRate = function (c, t0, win, fcI, fcT) {
+  const W = this.world, b0 = Math.floor((t0 - 6 - DAY0) / FC_BIN), nb = Math.max(1, Math.round(win / FC_BIN));
+  fcI = fcI || W.fcIsland; fcT = fcT || W.fcTotal;
+  let s = 0;
+  for (let b = b0; b < b0 + nb; b++) {
+    if (b < 0 || b >= FC_N) continue;
+    s += (fcI[c * 2][b] + fcI[c * 2 + 1][b]) * 0.72;          // 預け入れ後は最寄りの検査場へ
+    s += fcT[b] * 0.28 * [0.17, 0.22, 0.61][c];              // 手荷物なしは入口から最寄りへ
+  }
+  return s / (nb * FC_BIN);
+};
+
+Sim.prototype.controlSecurity = function () {
+  const t = this.t;
+  if (t < this.nextCtl) return;
+  this.nextCtl = t + 1;
+  for (let c = 0; c < 3; c++) {
+    const cp = this.cp[c], nm = LAY.cps[c].name;
+    if (cp.limit < 99 && t >= cp.limitUntil) { cp.limit = 99; this.addLog('scn', `保安検査場 ${nm} の検査機器が復旧しました。`); }
+    while (cp.plan.length && cp.plan[0].t <= t) { const pl = cp.plan.shift(); if (pl.d) cp.extra += pl.d; else cp.target = pl.n; }
+    if (this.mode === 0) {
+      const base = this.roster(t, c), pend = cp.plan.length;
+      if (cp.q.length > 55 && t - cp.lastReq >= 10 && base + cp.extra + pend < LAY.cpLanes) {
+        cp.lastReq = t; cp.plan.push({ t: t + P.laneLead, d: 1 });
+        this.addLog('ops', `保安検査場 ${nm} の待ちが ${cp.q.length} 人になったため、係員が増員を要請しました。${hhmm(t + P.laneLead)} にレーンを 1 本増やします。`);
+      }
+      if (cp.q.length < 6) { if (t - cp.calmSince > 25 && cp.extra > 0) { cp.extra--; cp.calmSince = t; } } else cp.calmSince = t;
+      cp.open = clamp(base + cp.extra, 1, LAY.cpLanes);
+    } else cp.open = cp.target;
+  }
+  if (this.mode === 1 && Math.floor(t) % 5 === 0) this.aiPlanLanes();
+};
+
+// AI 最適化: 便スケジュールとチェックイン実績から 20〜50 分先の到着を予測し、レーン数を先に決める
+Sim.prototype.aiPlanLanes = function () {
+  const t = this.t, fault = this.cp.some(c => c.limit < 99);
+  const lead = fault ? 10 : P.laneLead, tEff = t + lead;
+  const rate = [0, 1, 2].map(c => this.predictSecRate(c, tEff, 30));
+  const near = [0, 1, 2].map(c => this.predictSecRate(c, t, lead));
+  let R = 0, Q = 0, cap = 0;
+  for (let c = 0; c < 3; c++) { R += rate[c]; const cp = this.cp[c]; Q += cp.q.length + cp.enroute; cap += Math.min(cp.open, cp.limit) / P.secSvcMean; }
+  const backlog = Math.max(0, Q + (near[0] + near[1] + near[2] - cap) * lead);
+  let N = clamp(Math.ceil(R * P.secSvcMean * P.ai.margin + backlog / 26), 3, 15);
+  const n = [1, 1, 1], lim = this.cp.map(c => c.limit < 99 ? c.limit : LAY.cpLanes);
+  for (let k = 3; k < N; k++) {
+    let bi = -1, bv = -1;
+    for (let c = 0; c < 3; c++) { if (n[c] >= lim[c]) continue; const v = (rate[c] + this.cp[c].q.length / 30 + 0.2) / n[c]; if (v > bv) { bv = v; bi = c; } }
+    if (bi < 0) break; n[bi]++;
+  }
+  for (let c = 0; c < 3; c++) {
+    const cp = this.cp[c], last = cp.plan.length ? cp.plan[cp.plan.length - 1].n : cp.target;
+    let want = n[c];
+    if (want < last) { cp.downN = (cp.downN || 0) + 1; if (t - cp.lastReq < 15 || cp.downN < 3) continue; want = last - 1; cp.downN = 0; } else cp.downN = 0;   // 減らすのは 3 回続けて余裕があるときだけ
+    if (want === last) continue;
+    if (want > last) cp.lastReq = t;
+    cp.plan.push({ t: tEff, n: want });
+    const why = fault && cp.limit >= 99 ? `機器が故障した検査場の要員を移すためです。`
+      : `${hhmm(tEff)} からの 30 分間に 1 時間あたり ${Math.round(rate[c] * 60 / 10) * 10} 人が到着すると予測したためです。`;
+    this.addLog('ai', `保安検査場 ${LAY.cps[c].name} のレーンを ${hhmm(tEff)} に ${last} 本から ${want} 本へ${want > last ? '増やします' : '減らします'}。${why}`);
+  }
+};

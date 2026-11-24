@@ -1,0 +1,127 @@
+// =====================================================================
+// 46 sim (手荷物 3) : メイクアップ・トーイングトラクター・搭載・到着手荷物
+// トラクターの状態: 0 待機 / 1 ラテラルへ移動 / 2 積み付け中 / 3 機側へ移動 / 4 搭載中 / 5 帰還 / 6 到着便（取り降ろし）
+// =====================================================================
+const standSpot = g => [LAY.gates[g].sx - 6.5, -52];
+function setTugPath(tug, pts) {
+  tug.path = pts; tug.s = 0; tug.seg = [0]; let L = 0;
+  for (let i = 1; i < pts.length; i++) { L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); tug.seg.push(L); }
+  tug.len = L;
+}
+// 経路上の位置（back = 先頭からの後退距離）。ドーリーの位置にも使う
+function tugPose(tug, back, out) {
+  const p = tug.path; if (!p) { out.x = tug.x - back * tug.hx; out.z = tug.z - back * tug.hz; out.hx = tug.hx; out.hz = tug.hz; return out; }
+  let s = tug.s - back, i = 1;
+  if (s < 0) { const dx = p[1][0] - p[0][0], dz = p[1][1] - p[0][1], d = Math.hypot(dx, dz) || 1; out.x = p[0][0] + dx / d * s; out.z = p[0][1] + dz / d * s; out.hx = dx / d; out.hz = dz / d; return out; }
+  while (i < p.length - 1 && tug.seg[i] < s) i++;
+  const a = p[i - 1], b = p[i], l = tug.seg[i] - tug.seg[i - 1] || 1, k = clamp((s - tug.seg[i - 1]) / l, 0, 1);
+  out.x = a[0] + (b[0] - a[0]) * k; out.z = a[1] + (b[1] - a[1]) * k; out.hx = (b[0] - a[0]) / l; out.hz = (b[1] - a[1]) / l; return out;
+}
+const _tp = { x: 0, z: 0, hx: 0, hz: 0 };
+
+Sim.prototype.latArrive = function (b) {
+  const t = this.t, Lt = this.lat[b.lat], fs = this.flightState(b.f.id);
+  if (b.mis) {                                        // ミスソート: 積み付け時の照合で見つけ、係員が正しいラテラルへ運ぶ
+    b.mis = false; this.kpi.missort++; b.c = 2; b.lat = fs.lat; b.spd = 5;
+    if (fs.opened && !fs.finalSent) { this.lat[fs.lat].res++; b.wp = [[b.x, 0.5, 1], [BHS.lateralX[fs.lat], 0.5, 1], [BHS.lateralX[fs.lat], 0.6, BHS.zLat1]]; b.st = B.MOVE; b.next = NEXT.LAT_IN; }
+    else { b.missed = true; b.st = B.GONE; }
+    return;
+  }
+  Lt.res = Math.max(0, Lt.res - 1);
+  if (fs.closed || Lt.f !== b.f.id) { b.missed = true; b.st = B.GONE; return; }
+  b.st = B.LAT; b.slot = Lt.n++; Lt.slots.push(b);
+  this.kpi.bagTimeSum += t - b.t0 - b.store; this.kpi.bagTimeN++; this.kpi.bagSeries[this.bin15()] += t - b.t0 - b.store; this.kpi.bagSeriesN[this.bin15()]++;
+};
+
+Sim.prototype.stepMakeup = function (dt) {
+  const t = this.t, W = this.world, ai = this.mode === 1;
+  for (const f of W.flights) {
+    if (t < f.dep - 125 || t > f.dep) continue;
+    const fs = this.flightState(f.id); if (fs.closed) continue;
+    const k = f.lateralFix, Lt = this.lat[k];
+    // ラテラルを開く。従来運用 = 出発 120 分前の固定時刻、AI 最適化 = ドーリーが着いた時点（それまで EBS で保管）
+    if (!fs.opened && Lt.f < 0 && t >= f.dep - 120 && (!ai || (fs.train && fs.train.st === 2))) {
+      Lt.f = f.id; fs.lat = k; fs.opened = true;
+      if (ai) { let n = 0; for (const b of this.ebs.cells) if (b && b.f === f) n++; if (n >= 8) this.addLog('ai', `${f.code} 便の手荷物 ${n} 個を EBS から順に放出します。ドーリーがラテラル ${k + 1} に着いたためです。`); }
+    }
+    if (!fs.train && !fs.req && !fs.finalSent && (Lt.f < 0 || Lt.f === f.id)) {
+      const full = this.ebs.n > this.ebs.cells.length * 0.82;
+      const want = ai ? (t >= f.dep - 76 || (t >= f.dep - 118 && ((fs.ebsN || 0) >= 96 || (full && (fs.ebsN || 0) >= 30)))) : t >= f.dep - 97;
+      if (want) { fs.req = true; this.tugReq.push({ f, t }); }
+    }
+    const tug = fs.train;
+    if (tug && tug.st === 2) {
+      // 積み付け
+      fs.credit2 = Math.min((fs.credit2 || 0) + P.loadRate * dt, 3);
+      while (fs.credit2 >= 1 && Lt.slots.length && tug.bags.length < P.trainCap) { fs.credit2--; const b = Lt.slots.shift(); Lt.n--; b.st = B.TRAIN; b.tug = tug; b.slot = tug.bags.length; tug.bags.push(b); }
+      for (let i = 0; i < Lt.slots.length; i++) { const b = Lt.slots[i]; latSlot(k, i, _c); b.x += (_c.x - b.x) * Math.min(1, dt * 10); b.z += (_c.z - b.z) * Math.min(1, dt * 10); b.y = 0.6; }
+      // 出発の判断
+      let n = tug.bags.length, out = fs.bagsIn - fs.bagsLoaded - fs.onWay - n - fs.lostN;       // まだ届いていない個数
+      if (ai) for (const xb of f.xb) if (xb.t > t) out++;                                       // 到着便から届く予定の乗り継ぎ手荷物も数える
+      let leave = false, final = false;
+      if (ai) {
+        const drive = (Math.abs(tug.x - 5 - standSpot(f.gate)[0]) + 52) / SPD.tug + 0.4;
+        const last = f.dep - P.holdClose - drive - (n + 3) / P.acLoadRate;                          // 搭載に間に合う最終時刻を、走行距離と積んだ個数から逆算する
+        if (t >= last) leave = final = true;
+        else if (t >= f.dep - 26 && out <= 0 && t > f.dep - P.bagDropClose + 4) leave = final = true; // 追跡上、残りが無ければ早く出す
+        else if (n >= P.trainCap) leave = true;                                                       // 途中の便は満載になってから出す
+      } else {
+        if (t >= f.dep - P.base.final && (Lt.slots.length === 0 || t >= f.dep - 17)) leave = final = true;   // 固定の最終時刻。ラテラルに残りがあれば積み切る
+        else if (n >= P.trainCap || (fs.trainsSent === 0 && t >= f.dep - P.base.train1)) leave = true;
+      }
+      if (leave && (n > 0 || final)) {
+        fs.trainsSent++; fs.onWay += n; fs.train = null; if (final) fs.finalSent = true;
+        const sp = standSpot(f.gate); tug.st = 3; setTugPath(tug, [[tug.x, tug.z], [tug.x - 5, -5], [tug.x - 5, BHS.zRoad], [sp[0], BHS.zRoad], sp]);
+        if (final && ai && n > 0 && t > f.dep - 24) this.addLog('ai', `${f.code} 便の最終のドーリーを ${hhmm(t)} に出しました。追跡中の手荷物 ${n} 個が届くまで待ち、搭載に間に合う時刻を逆算したためです。`);
+      }
+    }
+  }
+  // ---- 配車。従来運用 = 要請順、AI 最適化 = 出発の早い便を優先し、近いトラクターを選ぶ ----
+  if (this.tugReq.length) {
+    if (ai) this.tugReq.sort((a, b) => a.f.dep - b.f.dep);
+    for (let r = 0; r < this.tugReq.length; r++) {
+      const rq = this.tugReq[r], lx = BHS.lateralX[rq.f.lateralFix]; let best = null, bd = 1e9;
+      for (const tug of this.tugs) { if (tug.st !== 0 && tug.st !== 5) continue; const d = Math.abs(tug.x - lx) + Math.abs(tug.z + 5); if (d < bd) { bd = d; best = tug; if (!ai) break; } }
+      if (!best) break;
+      best.st = 1; best.f = rq.f; best.bags = []; setTugPath(best, [[best.x, best.z], [best.x, BHS.zRoad], [lx + 13, BHS.zRoad], [lx + 13, -5], [lx - 1.5, -5]]);
+      this.flightState(rq.f.id).tugWait = this.t - rq.t; this.kpi.tugWaitSum += this.t - rq.t; this.kpi.tugWaitN++;
+      this.tugReq.splice(r--, 1);
+    }
+  }
+  // ---- トラクターの移動 ----
+  for (const list of [this.tugs, this.arrTugs]) for (let i = list.length - 1; i >= 0; i--) {
+    const tug = list[i];
+    if (tug.path) {
+      if (t >= tug.tEnd) tug.s = Math.min(tug.len, tug.s + SPD.tug * dt);
+      tugPose(tug, 0, _tp); tug.x = _tp.x; tug.z = _tp.z; tug.hx = _tp.hx; tug.hz = _tp.hz;
+      if (tug.s >= tug.len) this.tugArrive(tug, list, i);
+    } else if (tug.st === 4) {                        // 機側で搭載
+      const fs = this.flightState(tug.f.id); tug.credit = Math.min((tug.credit || 0) + P.acLoadRate * dt, 3);
+      while (tug.credit >= 1 && tug.bags.length) {
+        tug.credit--; const b = tug.bags.pop(); b.st = B.GONE; fs.onWay--;
+        if (t <= tug.f.dep - P.holdClose + 0.01 && !fs.closed) { fs.bagsLoaded++; this.kpi.loaded++; this.kpi.loadSeries[this.bin15()]++; this.kpi.loadPerMin[Math.min(DAY1, t | 0)]++; } else fs.lostN++;
+      }
+      if (!tug.bags.length) { tug.st = 5; tug.f = null; const px = -158 + tug.id * 5.5; setTugPath(tug, [[tug.x, tug.z], [tug.x, BHS.zRoad], [px, BHS.zRoad], [px, -9]]); }
+    } else if (tug.st === 6) {                        // 到着手荷物をベルトへ降ろす
+      tug.credit = Math.min((tug.credit || 0) + 14 * dt, 3);
+      while (tug.credit >= 1 && tug.bags.length) {
+        tug.credit--; const b = tug.bags.pop(), c = BHS.claim[b.lat]; b.st = B.MOVE; b.spd = SPD.belt; b.next = NEXT.CAR;
+        b.wp = [[-169, BY, -4], [-169, BY, 62], [c.x, BY, 62], [c.x, BY, c.z - 3.6]];
+      }
+      if (!tug.bags.length) { tug.st = 7; setTugPath(tug, [[tug.x, tug.z], [-150, BHS.zRoad], [-190, BHS.zRoad - 30]]); }
+    }
+    for (let j = 0; j < tug.bags.length; j++) {       // ドーリー上の手荷物の位置
+      const b = tug.bags[j], d = j % 4, r = (j >> 2);
+      tugPose(tug, 3.6 + d * 3.3 + ((r % 3) - 1) * 0.8, _tp);
+      b.x = _tp.x - _tp.hz * ((((r / 3) | 0) % 2) - 0.5) * 0.9; b.z = _tp.z + _tp.hx * ((((r / 3) | 0) % 2) - 0.5) * 0.9; b.y = 0.95 + (((r / 6) | 0) % 5) * 0.55;
+    }
+  }
+};
+Sim.prototype.tugArrive = function (tug, list, i) {
+  tug.path = null;
+  if (tug.st === 1) { tug.st = 2; const fs = this.flightState(tug.f.id); fs.train = tug; fs.req = false; tug.hx = -1; tug.hz = 0; }
+  else if (tug.st === 3) { tug.st = 4; }
+  else if (tug.st === 5) { tug.st = 0; tug.hx = 1; tug.hz = 0; }
+  else if (tug.st === 8) { tug.st = 6; }
+  else if (tug.st === 7) { list.splice(i, 1); }
+};

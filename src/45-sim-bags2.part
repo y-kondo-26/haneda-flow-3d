@@ -1,0 +1,126 @@
+// =====================================================================
+// 45 sim (手荷物 2) : 高速仕分け機（ループ）・手作業コード入力・EBS・仮置き
+// =====================================================================
+const D = { NONE: 0, LAT: 1, MES: 2, EBS: 3, HOLD: 4 };
+const ebsCell = (i, out) => {
+  const e = BHS.ebs, per = e.cols * e.rows, lv = Math.floor(i / per), r = i % per, c = r % e.cols, row = Math.floor(r / e.cols);
+  out.x = e.x1 - 3 - c * ((e.x1 - e.x0 - 6) / (e.cols - 1)); out.z = e.z0 + 2 + row * ((e.z1 - e.z0 - 4) / (e.rows - 1)); out.y = 0.7 + lv * 1.7;
+  if (Math.abs(out.z - 26) < 1.6) out.z += out.z < 26 ? -1.6 : 1.6;      // 中央通路を空ける
+  return out;
+};
+const holdSlot = (i, out) => { const h = BHS.hold; out.x = h.x0 + 2 + (i % 20) * 1.9; out.z = h.z0 + 1.5 + (Math.floor(i / 20) % 6) * 1.7; return out; };
+const latSlot = (k, i, out) => { out.x = BHS.lateralX[k] + ((i % 3) - 1) * 0.9; out.z = BHS.zLat1 + Math.floor(i / 3) * 0.95; return out; };
+const _c = { x: 0, y: 0, z: 0 };
+
+Sim.prototype.induct = function (b, u) {
+  b.st = B.LOOP; b.uLoop = u; b.dist = 0; b.laps = 0; b.y = BY + 0.3; this.loopN++;
+  if (!b.read && !b.tried) {                        // 投入時のタグ読取（従来運用 = バーコード、AI 最適化 = RFID）
+    b.tried = true;
+    if (b.u.uRead < (this.mode ? P.readRfid : P.readBarcode)) { b.read = true; b.mis = b.u.uMis < (this.mode ? P.missortRfid : P.missortBarcode); }
+    else this.kpi.noRead++;
+    this.kpi.reads++;
+  }
+  this.route(b);
+};
+Sim.prototype.route = function (b) {
+  const t = this.t, f = b.f, fs = this.flightState(f.id);
+  b.tRoute = t + 0.5;
+  if (!b.read) { b.dest = D.MES; b.uDest = BHS.uMes; b.c = 2; return; }
+  if (b.missed || fs.closed || fs.finalSent) { b.missed = true; b.dest = D.HOLD; b.uDest = BHS.uMes; b.c = 2; return; }
+  if (fs.opened) {
+    const k = b.mis ? (fs.lat + 1) % 12 : fs.lat, Lt = this.lat[k];
+    if (b.mis || Lt.n + Lt.res < P.latCap) { b.dest = D.LAT; b.lat = k; b.uDest = BHS.uLat[k]; if (!b.mis) Lt.res++; b.c = b.mis ? 2 : 0; return; }
+    b.dest = D.NONE; b.c = 1; return;                // ラテラルが満杯 → 周回して待つ
+  }
+  if ((this.mode === 1 || f.dep - t > 150) && this.ebs.n < this.ebs.cells.length) { b.dest = D.EBS; b.uDest = BHS.uEbs; b.c = 0; return; }
+  if (b.laps >= P.base.holdAfterLaps) { b.dest = D.HOLD; b.uDest = BHS.uMes; b.c = 1; return; }
+  b.dest = D.NONE; b.c = 1;                          // 早すぎる手荷物 → 周回
+};
+Sim.prototype.leaveLoop = function (b) {
+  this.loopN--; b.st = B.MOVE; b.y = BY; const lp = BHS.loop, fs = this.flightState(b.f.id);
+  if (b.dest === D.LAT) {
+    b.spd = SPD.chute; const Lt = this.lat[b.lat]; latSlot(b.lat, Math.min(Lt.n + Lt.res, P.latCap + 5), _c);
+    b.wp = [[BHS.lateralX[b.lat], BY, BHS.zLat0 + 1], [_c.x, BY * 0.7, Math.min(_c.z + 1, BHS.zLat0)]]; b.next = NEXT.LAT_IN;
+  } else if (b.dest === D.MES) { b.spd = SPD.belt; b.wp = [[lp.a + lp.r + 3, BY, lp.zc]]; b.next = NEXT.MES_Q; }
+  else if (b.dest === D.EBS) {
+    let ci = this.ebs.cells.indexOf(null); if (ci < 0) ci = 0;
+    this.ebs.cells[ci] = b; this.ebs.n++; b.cell = ci; fs.ebsN = (fs.ebsN || 0) + 1; ebsCell(ci, _c); b.spd = SPD.belt * 1.3;
+    b.wp = [[-lp.a - lp.r - 4, BY, lp.zc], [_c.x, BY, lp.zc], [_c.x, _c.y, _c.z]]; b.next = NEXT.EBS_IN;
+  } else { holdSlot(this.holdN++, _c); b.spd = SPD.belt * 0.6; b.wp = [[lp.a + lp.r + 3, BY, lp.zc - 4], [_c.x, 0.5, _c.z]]; b.next = NEXT.HOLD_IN; }
+};
+
+Sim.prototype.bagArrive2 = function (b) {
+  const t = this.t, lp = BHS.loop;
+  switch (b.next) {
+    case NEXT.MES_Q: b.st = B.MES_Q; b.tS = t; this.mes.q.push(b); break;
+    case NEXT.EBS_IN: b.st = B.EBS; b.tS = t; b.c = 3; break;
+    case NEXT.HOLD_IN: b.st = B.HOLD; b.tS = t; b.tEnd = t + 12; break;
+    case NEXT.EBS_OUT: if (this.loopN < P.loopCap) this.induct(b, b.k ? BHS.uMes : BHS.uEbs); else b.wp = [[b.x, b.y, b.z]]; break;
+    case NEXT.LAT_IN: this.latArrive(b); break;
+    case NEXT.CAR: b.st = B.CAR; b.tEnd = t + 1.5 + 7 * b.u; b.k = Math.atan2(b.z - BHS.claim[b.lat].z, b.x - BHS.claim[b.lat].x); break;
+    case NEXT.REMOVE: b.st = B.GONE; break;
+  }
+};
+
+Sim.prototype.stepBags = function (dt) {
+  const t = this.t, L = BHS.loop.L, arr = this.bags, stepL = SPD.loop * dt;
+  // ---- 手作業コード入力（読取不良の手荷物）----
+  const m = this.mes;
+  for (let k = 0; k < m.free.length && m.q.length; k++) if (m.free[k] <= t) {
+    const b = m.q.shift(), start = b.tS <= m.free[k] ? Math.max(m.free[k], t - dt) : t;
+    m.free[k] = b.tEnd = start + P.mesSvc; b.st = B.MES; b.x = BHS.mes.x; b.z = BHS.mes.z + (k ? 2.2 : -2.2);
+  }
+  for (let i = 0; i < m.q.length; i++) { const b = m.q[i]; b.x = BHS.mes.x - 3 - (i % 9) * 0.95; b.z = BHS.mes.z - 1 + Math.floor(i / 9) * 0.95; }
+  for (let i = arr.length - 1; i >= 0; i--) {
+    const b = arr[i];
+    switch (b.st) {
+      case B.MOVE: if (this.moveBag(b, dt)) this.bagArrive(b); break;
+      case B.LOOP: {
+        const u0 = b.uLoop, u1 = u0 + stepL; b.dist += stepL;
+        if (b.dist >= (b.laps + 1) * L) { b.laps++; if (b.dest === D.NONE) this.kpi.recircLaps++; }
+        if (b.dest !== D.NONE && ((b.uDest > u0 && b.uDest <= u1) || (b.uDest + L > u0 && b.uDest + L <= u1))) { loopPos(b.uDest, b); this.leaveLoop(b); break; }
+        if (b.dest === D.NONE && t >= b.tRoute) this.route(b);
+        b.uLoop = u1 >= L ? u1 - L : u1; loopPos(b.uLoop, b);
+        break;
+      }
+      case B.L2: if (t >= b.tEnd) { b.st = B.MOVE; b.c = 0; b.spd = SPD.belt; b.wp = [[BHS.edsX[b.line], BY, BHS.zEdsOut - 1], [BHS.edsX[b.line], BY, BHS.loop.zc + BHS.loop.r + 0.6]]; b.next = NEXT.INDUCT; } break;
+      case B.MES: if (t >= b.tEnd) { b.read = true; b.c = 0; b.st = B.MOVE; b.k = 1; b.spd = SPD.belt; b.wp = [[BHS.loop.a + BHS.loop.r + 0.5, BY, BHS.loop.zc]]; b.next = NEXT.EBS_OUT; } break;
+      case B.HOLD:
+        if (b.missed) { if (t >= b.tEnd) { b.st = B.GONE; this.holdN = Math.max(0, this.holdN - 1); } }
+        else if (t >= b.f.dep - P.base.latOpen + 3 + (b.id % 5)) {      // ラテラルが開いたあと、係員が仮置き場から戻す
+          if (b.u.uHold < P.base.holdMis) { b.missed = true; b.c = 2; b.tEnd = b.f.dep + 10; this.kpi.holdLost++; }
+          else { b.store += t - b.tS; b.st = B.MOVE; b.k = 1; b.spd = 16; b.c = 1; b.wp = [[BHS.loop.a + BHS.loop.r + 3, BY, BHS.loop.zc - 4], [BHS.loop.a + BHS.loop.r + 0.5, BY, BHS.loop.zc]]; b.next = NEXT.EBS_OUT; this.holdN = Math.max(0, this.holdN - 1); }
+        }
+        break;
+      case B.CAR: { const c = BHS.claim[b.lat]; b.k += dt * 2.2; b.x = c.x + Math.cos(b.k) * 6.2; b.z = c.z + Math.sin(b.k) * 3.6; if (t >= b.tEnd) b.st = B.GONE; break; }
+    }
+    if (b.st === B.GONE) { arr[i] = arr[arr.length - 1]; arr.pop(); }
+  }
+  this.stepEbs();
+};
+
+// EBS の放出。従来運用: ラテラルが開いた時点でその便の全量をまとめて出す。
+// AI 最適化: ドーリーが着いたあと（遅くとも出発 80 分前）、ラテラルの空きに合わせて出発の早い便から出す。
+Sim.prototype.stepEbs = function () {
+  const t = this.t;
+  if (t < (this.nextEbs || 0)) return;
+  this.nextEbs = t + 0.25;
+  let budget = 8, cells = this.ebs.cells, pick = [];
+  for (let i = 0; i < cells.length; i++) {
+    const b = cells[i]; if (!b || b.st !== B.EBS) continue;
+    const fs = this.flightState(b.f.id);
+    if (fs.closed || fs.finalSent) { b.missed = true; pick.push(b); continue; }
+    if (!fs.opened) continue;
+    if (this.mode === 1) { const Lt = this.lat[fs.lat]; if (!(fs.train && fs.train.st === 2) && t < b.f.dep - P.ai.ebsRelease) continue; if (Lt.n + Lt.res + (fs.ebsOut || 0) > P.latCap - 8) continue; }
+    pick.push(b);
+  }
+  if (this.mode === 1) pick.sort((a, b) => a.f.dep - b.f.dep);
+  for (const b of pick) {
+    if (budget-- <= 0) break;
+    const fs = this.flightState(b.f.id); fs.ebsOut = (fs.ebsOut || 0) + 1; setTimeoutSim(this, 2.5, () => { fs.ebsOut--; });
+    cells[b.cell] = null; this.ebs.n--; fs.ebsN--; b.store += t - b.tS; b.st = B.MOVE; b.k = 0; b.c = 0; b.spd = SPD.belt * 1.3;
+    b.wp = [[b.x, BY, BHS.loop.zc], [-BHS.loop.a - BHS.loop.r - 0.5, BY, BHS.loop.zc]]; b.next = NEXT.EBS_OUT;
+    if (!b.missed) this.kpi.ebsOut++;
+  }
+};
+function setTimeoutSim(sim, d, fn) { (sim.timers || (sim.timers = [])).push({ t: sim.t + d, fn }); }

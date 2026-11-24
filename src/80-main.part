@@ -1,0 +1,53 @@
+// =====================================================================
+// 80 main : 初期化・毎フレームの更新・リサイズ・テーマ追従・非表示時の停止
+// =====================================================================
+function onResize() {
+  const w = Math.max(1, wrapEl.clientWidth), h = Math.max(1, wrapEl.clientHeight);
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); renderer.setSize(w, h, false); labelRenderer.setSize(w, h);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  if (sims) updateCharts();
+}
+function applyThemeAll() { applyTheme(); setUpperOpacity(upperGhost); if (sims) { updateCharts(); updateFlows(sims[active]); } }
+
+let rafId = 0, lastNow = 0, uiAcc = 0, lblAcc = 0, dayEndShown = false;
+function frame(now) {
+  rafId = requestAnimationFrame(frame);
+  const dtReal = Math.min(0.1, (now - lastNow) / 1000 || 0.016); lastNow = now;
+  if (playing) {
+    if (sims[0].t < DAY1 - 0.5) {
+      const dtSim = Math.min(dtReal * speed, DAY1 - 0.5 - sims[0].t), n = Math.max(1, Math.ceil(dtSim / 0.05)), h = dtSim / n;
+      for (let i = 0; i < n; i++) { sims[0].step(h); sims[1].step(h); }
+      dayEndShown = false;
+    } else if (!dayEndShown) { dayEndShown = true; setPlaying(false); toast('24:00 になりました。「05:00 から」を押すと、最初から計算し直します。'); }
+  }
+  const sim = sims[active];
+  updateFlows(sim); updateHeat(sim, false); updateAircraft(sim, world);
+  stepTour(dtReal); stepCamera(dtReal); controls.update();
+  const cd = camera.position.distanceTo(controls.target); scene.fog.near = cd * (TH.dark ? 1.0 : 1.25) + 260; scene.fog.far = cd * 2.4 + (TH.dark ? 1500 : 2600);   // 注視点までは霞ませない
+  if (!reduceMotion.matches && playing) { waterTex.offset.x += dtReal * 0.004; waterTex.offset.y += dtReal * 0.0025; }
+  if ((lblAcc += dtReal) > 0.2) { lblAcc = 0; updateLabelVisibility(); }
+  if ((uiAcc += dtReal) > 0.4) { uiAcc = 0; refreshUi(false); }
+  renderer.render(scene, camera); labelRenderer.render(scene, camera);
+}
+function start() { if (!rafId) { lastNow = performance.now(); rafId = requestAnimationFrame(frame); } }
+function stop() { if (rafId) { cancelAnimationFrame(rafId); rafId = 0; } }
+
+function init() {
+  resetSim(START_AT);
+  buildSite(); buildLower(); buildUpper(); buildApron(); buildFlows(); buildHeat();
+  applyTheme(); setUpperOpacity(0);
+  bindUi(); bindCamera(); onResize(); goCam('all', true); setMode(1, true);
+  new ResizeObserver(onResize).observe(wrapEl);
+  // テーマ: OS の設定の変化と、ビューアが付ける data-theme 属性の変化の両方に追従する
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyThemeAll);
+  new MutationObserver(applyThemeAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); else start(); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (sims) updateCharts(); });
+  refreshUi(true); updateLabelVisibility();
+  renderer.render(scene, camera); labelRenderer.render(scene, camera);
+  $('boot').hidden = true;
+  if (!document.hidden) start();
+}
+window.__hf = { THREE, scene, camera, renderer, controls, get sims() { return sims; }, get world() { return world; }, get active() { return active; } };   // 確認用
+try { init(); } catch (err) { console.error(err); $('boot').hidden = false; $('boot').textContent = '3D の初期化に失敗しました: ' + (err && err.message ? err.message : err); }
+</script>

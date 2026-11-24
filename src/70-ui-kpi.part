@@ -1,0 +1,86 @@
+// =====================================================================
+// 70 ui (指標・グラフ) : 2 つのシミュレーションの実測値を並べ、差を出す
+// =====================================================================
+const SEED = 20261124, START_AT = 6 * 60 + 40;      // 最初に見せる時刻（朝の出発ピーク）
+let world, sims, active = 1, speed = 1, playing = true, win60 = false;
+const fmt = (v, dec) => v.toLocaleString('ja-JP', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+const KPI_ROWS = [
+  { id: 'wait', label: '保安検査の平均待ち', unit: '分', dec: 1, better: -1, get: v => v.waitAvg },
+  { id: 'maxq', label: '保安検査の最大待ち人数', sub: '3 か所の合計', unit: '人', dec: 0, better: -1, get: v => v.maxQ },
+  { id: 'lane', label: '稼働レーンの延べ人時', sub: '1 レーン 5 人で換算', unit: '人時', dec: 0, better: -1, get: v => v.laneHours },
+  { id: 'bag', label: '手荷物の処理時間', sub: '預け入れ → メイクアップ。保管時間を除く', unit: '分', dec: 1, better: -1, get: v => v.bagTime },
+  { id: 'mis', label: 'ミスハンドリング', sub: '出発便に積めなかった手荷物', unit: '件/1,000個', dec: 1, better: -1, get: v => v.mishandled },
+  { id: 'clean', label: '全量を搭載できた便', sub: '出発 8 分前までに全個数を搭載', unit: '%', dec: 0, better: 1, pt: true, get: v => v.clean },
+  { id: 'pax', label: '保安検査の処理旅客数', sub: '直近 60 分', unit: '人/時', dec: 0, better: 0, get: v => v.pax60 },
+  { id: 'bags', label: '搭載した手荷物数', sub: '直近 60 分', unit: '個/時', dec: 0, better: 0, get: v => v.bag60 },
+];
+function buildKpiTable() {
+  $('kpiBody').innerHTML = KPI_ROWS.map(r => `<tr><th scope="row">${r.label}<small>${r.sub ? r.sub + '・' : ''}${r.unit}</small></th><td id="k-${r.id}-b">–</td><td id="k-${r.id}-a">–</td><td class="d" id="k-${r.id}-d">–</td></tr>`).join('');
+}
+function diffText(r, b, a) {
+  if (r.pt) { const d = a - b; return { txt: (d > 0 ? '+' : d < 0 ? '−' : '±') + fmt(Math.abs(d), 0) + ' pt', sign: Math.abs(d) < 0.5 ? 0 : Math.sign(d) * r.better }; }
+  if (!(b > 0)) return { txt: '–', sign: 0 };
+  const d = (a - b) / b * 100; return { txt: (d > 0 ? '+' : d < 0 ? '−' : '±') + fmt(Math.abs(d), 0) + '%', sign: Math.abs(d) < 1 ? 0 : Math.sign(d) * r.better };
+}
+function updateKpi() {
+  const vb = win60 ? sims[0].view60() : sims[0].view(), va = win60 ? sims[1].view60() : sims[1].view();
+  for (const r of KPI_ROWS) {
+    const b = r.get(vb), a = r.get(va), d = diffText(r, b, a), eb = $(`k-${r.id}-b`), ea = $(`k-${r.id}-a`), ed = $(`k-${r.id}-d`);
+    const none = (r.id === 'mis' || r.id === 'clean') && !vb.closedFlights;       // 出発した便がまだ無い
+    eb.textContent = none ? '–' : fmt(b, r.dec); ea.textContent = none ? '–' : fmt(a, r.dec); ed.textContent = none ? '–' : d.txt;
+    ed.className = 'd' + (r.better === 0 ? '' : d.sign > 0 ? ' good' : d.sign < 0 ? ' bad' : '');
+    eb.className = active === 0 ? 'on' : ''; ea.className = active === 1 ? 'on' : '';
+  }
+  // 見出し（結論）: 保安検査の平均待ちの差を実測値から書く
+  const w = diffText(KPI_ROWS[0], vb.waitAvg, va.waitAvg), l = diffText(KPI_ROWS[2], vb.laneHours, va.laneHours);
+  if (vb.secN < 200) { $('hlMain').textContent = '計測中'; $('hlSub').textContent = '保安検査を通過した旅客が 200 人を超えると、差を表示します。'; }
+  else {
+    $('hlMain').innerHTML = `保安検査の平均待ち <em class="${w.sign > 0 ? 'good' : w.sign < 0 ? 'bad' : ''}">${w.txt}</em>`;
+    $('hlSub').innerHTML = `従来運用 <span class="num">${fmt(vb.waitAvg, 1)}</span> 分 → AI 最適化 <span class="num">${fmt(va.waitAvg, 1)}</span> 分。レーンの延べ人時は <span class="num">${l.txt}</span>、ミスハンドリングは <span class="num">${fmt(vb.mishandled, 1)}</span> → <span class="num">${fmt(va.mishandled, 1)}</span> 件/1,000個（${win60 ? '直近 60 分' : '05:00 から ' + hhmm(sims[0].t) + ' まで'}）。`;
+  }
+}
+
+// ---- グラフ（canvas 2D）。軸と目盛りは実際の値から引く ----
+function niceMax(v) { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 3 ? 3 : n <= 5 ? 5 : 10) * p; }
+function setupCanvas(cv) {
+  const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1), w = Math.max(10, Math.round(r.width)), h = Math.max(10, Math.round(r.height));
+  if (cv.width !== w * dpr || cv.height !== h * dpr) { cv.width = w * dpr; cv.height = h * dpr; }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h); return { g, w, h };
+}
+function chartFrame(cv, ymax, unit) {
+  const { g, w, h } = setupCanvas(cv), L = 30, R = 8, T = 6, Bm = 16, pw = w - L - R, ph = h - T - Bm;
+  const X = t => L + (t - DAY0) / (DAY1 - DAY0) * pw, Y = v => T + ph - Math.min(1, v / ymax) * ph;
+  g.font = '10px "B612 Mono", ui-monospace, Menlo, monospace'; g.textBaseline = 'middle';
+  g.strokeStyle = TH.css['grid']; g.fillStyle = TH.css['ink-3']; g.lineWidth = 1;
+  for (let i = 0; i <= 2; i++) { const v = ymax * i / 2, y = Math.round(Y(v)) + 0.5; g.beginPath(); g.moveTo(L, y); g.lineTo(w - R, y); g.stroke(); g.textAlign = 'right'; g.fillText(fmt(v, ymax < 4 ? 1 : 0), L - 4, y); }
+  g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  for (let hh = 6; hh <= 24; hh += 3) { const x = Math.round(X(hh * 60)) + 0.5; g.beginPath(); g.moveTo(x, T + ph); g.lineTo(x, T + ph + 3); g.stroke(); g.fillText(String(hh).padStart(2, '0') + ':00', Math.min(x, w - R - 14), h - 2); }
+  return { g, w, h, X, Y, L, R, T, ph, pw };
+}
+function nowLine(f, t) { const { g, X, T, ph } = f, x = Math.round(X(t)) + 0.5; g.strokeStyle = TH.css['ink']; g.lineWidth = 1; g.beginPath(); g.moveTo(x, T); g.lineTo(x, T + ph); g.stroke(); }
+function drawLines(cv, series, t, minMax) {
+  const nb = sims[0].bin15(); let mx = minMax;
+  for (const s of series) for (let b = 0; b <= nb; b++) if (s.n[b] > 0) mx = Math.max(mx, s.sum[b] / s.n[b]);
+  const f = chartFrame(cv, niceMax(mx)), { g, X, Y } = f;
+  for (const s of series) {
+    g.strokeStyle = s.color; g.lineWidth = s.on ? 2.2 : 1.4; g.globalAlpha = s.on ? 1 : 0.75; g.lineJoin = 'round'; g.beginPath(); let pen = false, lx = 0, ly = 0;
+    for (let b = 0; b <= nb; b++) { if (!(s.n[b] > 0)) continue; const x = X(DAY0 + b * 15 + (b === nb ? Math.min(7.5, (t - DAY0 - b * 15) / 2) : 7.5)), y = Y(s.sum[b] / s.n[b]); if (pen) g.lineTo(x, y); else g.moveTo(x, y); pen = true; lx = x; ly = y; }
+    g.stroke(); if (pen) { g.fillStyle = s.color; g.beginPath(); g.arc(lx, ly, s.on ? 3 : 2.2, 0, 6.3); g.fill(); }
+    g.globalAlpha = 1;
+  }
+  nowLine(f, t);
+}
+function updateCharts() {
+  const t = sims[0].t, k0 = sims[0].kpi, k1 = sims[1].kpi, nb = sims[0].bin15();
+  // 需要: 15 分ごとの到着（実績の棒）と、AI が使う到着予測（破線）
+  const fc = new Float32Array(NB); let mx = 10;
+  for (let b = 0; b < NB; b++) { for (let j = 0; j < 3; j++) fc[b] += world.fcTotal[b * 3 + j] || 0; mx = Math.max(mx, fc[b], k0.arrivals[b]); }
+  const f = chartFrame($('chDemand'), niceMax(mx)), { g, X, Y, T, ph } = f, bw = Math.max(1.5, (X(DAY0 + 15) - X(DAY0)) - 1);
+  g.fillStyle = TH.css['pax']; for (let b = 0; b <= nb; b++) { const v = k0.arrivals[b]; if (v > 0) g.fillRect(X(DAY0 + b * 15) + 0.5, Y(v), bw, T + ph - Y(v)); }
+  g.strokeStyle = TH.css['ink-3']; g.lineWidth = 1.2; g.setLineDash([3, 2]); g.beginPath();
+  for (let b = 0; b < NB; b++) { const x0 = X(DAY0 + b * 15), x1 = X(DAY0 + b * 15 + 15), y = Y(fc[b]); if (b) g.lineTo(x0, y); else g.moveTo(x0, y); g.lineTo(x1, y); }
+  g.stroke(); g.setLineDash([]); nowLine(f, t);
+  const cb = TH.css['base-c'], ca = TH.css['ai-c'];
+  drawLines($('chWait'), [{ sum: k0.waitSum, n: k0.waitN, color: cb, on: active === 0 }, { sum: k1.waitSum, n: k1.waitN, color: ca, on: active === 1 }], t, 4);
+  drawLines($('chBag'), [{ sum: k0.bagSeries, n: k0.bagSeriesN, color: cb, on: active === 0 }, { sum: k1.bagSeries, n: k1.bagSeriesN, color: ca, on: active === 1 }], t, 10);
+}

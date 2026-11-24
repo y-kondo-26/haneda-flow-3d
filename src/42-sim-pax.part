@@ -1,0 +1,113 @@
+// =====================================================================
+// 42 sim (旅客) : 1 つの運用モードを時間発展させる。mode 0 = 従来運用、1 = AI 最適化
+// =====================================================================
+const S = { WALK_DROP: 1, Q_DROP: 2, AT_DROP: 3, WALK_SEC: 4, Q_SEC: 5, IN_LANE: 6, WALK_IMM: 7, Q_IMM: 8, AT_IMM: 9,
+  WALK_GATE: 10, LOUNGE: 11, BOARD: 12, ARR_WALK: 13, CLAIM: 14, ARR_EXIT: 15 };
+const LANE_ORDER = [2, 3, 1, 4, 0, 5];
+const laneX = (cp, l) => LAY.cps[cp].x + (l - 2.5) * LAY.laneGap;
+const kioskPos = (isl, k) => ({ x: LAY.islands[isl].x + (k % 2 ? 4.6 : -4.6), z: LAY.islands[isl].z0 + 2 + (k >> 1) * 3 });
+function secSlot(cp, i, out) {       // 保安検査の待ち行列（つづら折り）の i 番目の位置
+  const row = Math.floor(i / 22), c = i % 22;
+  out.x = LAY.cps[cp].x + ((row & 1) ? (10.5 - c) : (c - 10.5)) * 1.2; out.z = LAY.zQ + row * 1.3; return out;
+}
+const dropSlot = (isl, i, out) => { const row = Math.floor(i / 9), c = i % 9; out.x = LAY.islands[isl].x + ((row & 1) ? (4 - c) : (c - 4)) * 1.15; out.z = LAY.islands[isl].z1 + 2.2 + row * 1.25; return out; };
+const immSlot = (cp, i, out) => { const row = Math.floor(i / 12), c = i % 12; out.x = LAY.cps[cp].x + ((row & 1) ? (5.5 - c) : (c - 5.5)) * 1.15; out.z = LAY.zImm + 2.6 + row * 1.15; return out; };
+const _slot = { x: 0, z: 0 };
+
+class Sim {
+  constructor(world, mode) {
+    this.world = world; this.mode = mode; this.t = DAY0;
+    this.pax = []; this.paxPtr = 0;
+    this.isl = LAY.islands.map(() => ({ q: [], free: new Float64Array(LAY.dropsPerIsland) }));
+    this.cp = LAY.cps.map(() => ({ q: [], free: new Float64Array(LAY.cpLanes), open: 1, target: 1, plan: [], limit: 99, limitUntil: 0,
+      enroute: 0, lastReq: -99, calmSince: 0, extra: 0, served: 0, waitEma: 0 }));
+    this.imm = LAY.cps.map(() => ({ q: [], free: new Float64Array(LAY.immGates) }));
+    this.fs = [];                      // 便ごとの状態（搭乗・手荷物）
+    this.log = []; this.nextCtl = DAY0; this.scn = { edsDown: -1, edsUntil: 0, edsSwitchAt: 0 };
+    this.initBags(); this.initKpi();
+    for (let c = 0; c < 3; c++) this.cp[c].open = this.cp[c].target = this.mode ? 1 : this.roster(DAY0, c);
+  }
+  flightState(i) {
+    while (this.fs.length <= i) this.fs.push(null);
+    return this.fs[i] || (this.fs[i] = { lounge: [], credit: 0, boarded: 0, missedPax: 0, bagsIn: 0, bagsLoaded: 0, bagsMissed: 0,
+      lat: -1, onWay: 0, lostN: 0, req: false, train: null, trainsSent: 0, finalSent: false, closed: false, arrDone: false, arrSpawn: 0, arrBagT: 0, opened: false });
+  }
+  addLog(kind, text) { this.log.push({ t: this.t, kind, text }); if (this.log.length > 400) this.log.shift(); }
+
+  go(a, st, pts) { a.st = st; a.wp = pts; const n = a.wp.shift(); a.tx = n[0]; a.tz = n[1]; }
+  spawnPax() {
+    const W = this.world;
+    while (this.paxPtr < W.pax.length && W.pax[this.paxPtr].tArr <= this.t) {
+      const p = W.pax[this.paxPtr++], f = W.flights[p.f];
+      if (f.dep <= this.t) continue;
+      const a = { p, f, x: 0, z: 0, lvl: 0, st: 0, tx: 0, tz: 0, wp: null, cp: -1, lane: -1, k: -1, t0: 0, tEnd: 0, spd: SPD.walk * (0.86 + 0.14 * (p.off + 1)), kind: p.xfer ? 2 : 0, wait: 0 };
+      if (p.xfer) {
+        const g = LAY.gates[p.fromGate]; a.x = g.x + 8; a.z = LAY.zGate + 1;
+        this.go(a, S.WALK_GATE, [[g.x + 8, 5.5 + p.off], [p.seatX, 5.5 + p.off], [p.seatX, p.seatZ]]);
+      } else {
+        const d = LAY.doors[p.door]; a.x = d.x + (d.station ? 0 : p.off * 5); a.z = d.z + (d.station ? p.off * 3 : 0);
+        this.kpi.arrivals[this.bin15()]++;
+        if (p.bags) { const isl = f.island; this.go(a, S.WALK_DROP, [[LAY.islands[isl].x + p.off * 4, 80 - Math.min(6, this.isl[isl].q.length * 0.14)]]); a.k = isl; }
+        else this.toSecurity(a);
+      }
+      this.pax.push(a);
+    }
+  }
+  // 検査場の選択。従来運用は最寄り、AI 最適化はサイネージで「歩行 + 予測待ち」が最小の検査場へ誘導（一部の旅客は従わない）
+  toSecurity(a) {
+    let best = 0, bd = 1e9;
+    for (let c = 0; c < 3; c++) { const d = Math.abs(LAY.cps[c].x - a.x); if (d < bd) { bd = d; best = c; } }
+    if (this.mode === 1 && a.p.uComply < (this.cp.some(c => c.limit < 99) ? P.ai.complyFault : P.ai.comply)) {
+      let bc = 1e9; const near = best;
+      for (let c = 0; c < 3; c++) {
+        const cp = this.cp[c], lanes = Math.max(0.5, Math.min(cp.open, cp.limit));
+        const cost = Math.abs(LAY.cps[c].x - a.x) / SPD.walk + (cp.q.length + cp.enroute * 0.8) * P.secSvcMean / lanes + (c === near ? -0.8 : 0);
+        if (cost < bc) { bc = cost; best = c; }
+      }
+      if (best !== near) { this.kpi.guided++; this.gd[near * 3 + best]++; }
+    }
+    a.cp = best; this.cp[best].enroute++;
+    const rows = Math.floor(this.cp[best].q.length / 22);
+    this.go(a, S.WALK_SEC, [[a.x + (LAY.cps[best].x - a.x) * 0.5, Math.max(a.z - 6, LAY.zQ + rows * 1.3 + 4)], [LAY.cps[best].x + a.p.off * 10, LAY.zQ + rows * 1.3 + 2.2]]);
+  }
+  stepPax(dt) {
+    const t = this.t, W = this.world;
+    // ---- 自動手荷物預け機 ----
+    for (let i = 0; i < 6; i++) {
+      const is = this.isl[i];
+      for (let k = 0; k < is.free.length && is.q.length; k++) if (is.free[k] <= t) {
+        const a = is.q.shift(), start = a.t0 <= is.free[k] ? is.free[k] : t;
+        is.free[k] = a.tEnd = start + 0.3 + a.p.svcDrop; a.st = S.AT_DROP; a.lane = k;
+        const kp = kioskPos(i, k); a.tx = kp.x; a.tz = kp.z; a.wp = [];
+        this.kpi.dropWaitSum += start - a.t0; this.kpi.dropN++;
+      }
+      for (let j = 0; j < is.q.length; j++) { const a = is.q[j]; dropSlot(i, j, _slot); a.tx = _slot.x; a.tz = _slot.z; }
+    }
+    // ---- 保安検査 ----
+    for (let c = 0; c < 3; c++) {
+      const cp = this.cp[c], n = Math.min(cp.open, cp.limit);
+      for (let j = 0; j < n && cp.q.length; j++) {
+        const l = LANE_ORDER[j]; if (cp.free[l] > t) continue;
+        const a = cp.q.shift(), start = a.t0 <= cp.free[l] ? Math.max(cp.free[l], t - dt) : t;
+        cp.free[l] = start + a.p.svcSec; a.wait = start - a.t0; this.recordSecWait(c, a.wait);
+        a.lane = l; a.spd = 9.5; this.go(a, S.IN_LANE, [[laneX(c, l), LAY.zLaneIn], [laneX(c, l), LAY.zLaneOut]]);
+      }
+      for (let j = 0; j < cp.q.length; j++) { const a = cp.q[j]; secSlot(c, j, _slot); a.tx = _slot.x; a.tz = _slot.z; }
+      const im = this.imm[c];
+      for (let k = 0; k < im.free.length && im.q.length; k++) if (im.free[k] <= t) {
+        const a = im.q.shift(), start = a.t0 <= im.free[k] ? Math.max(im.free[k], t - dt) : t;
+        im.free[k] = a.tEnd = start + a.p.svcImm + 0.12; a.st = S.AT_IMM; a.tx = LAY.cps[c].x + (k - 3) * 2.6; a.tz = LAY.zImm; a.wp = [];
+      }
+      for (let j = 0; j < im.q.length; j++) { const a = im.q[j]; immSlot(c, j, _slot); a.tx = _slot.x; a.tz = _slot.z; }
+    }
+    // ---- 移動と状態遷移 ----
+    const arr = this.pax;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      const a = arr[i]; let dx = a.tx - a.x, dz = a.tz - a.z; const d = Math.hypot(dx, dz), stp = a.spd * dt;
+      let hit = false;
+      if (d <= stp) { a.x = a.tx; a.z = a.tz; hit = true; } else { a.x += dx / d * stp; a.z += dz / d * stp; }
+      if (hit && a.wp && a.wp.length) { const n = a.wp.shift(); a.tx = n[0]; a.tz = n[1]; continue; }
+      if (this.paxEvent(a, hit, t)) { arr[i] = arr[arr.length - 1]; arr.pop(); }
+    }
+  }
+}

@@ -1,0 +1,62 @@
+// =====================================================================
+// 74 camera : プリセット・滑らかな移動・自動ツアー（動きを減らす設定では、移動は瞬時、ツアーは無効）
+// =====================================================================
+const CAMS = {
+  all: { p: [-175, 250, 318], t: [14, 0, -18], ghost: 0 },
+  lobby: { p: [-78, 52, 142], t: [-52, 12, 60], ghost: 0 },
+  sec: { p: [44, 50, 92], t: [2, 12, 36], ghost: 0 },
+  bhs: { p: [26, 88, 112], t: [4, 0, 27], ghost: 1 },
+  ebs: { p: [-196, 46, 78], t: [-128, 2, 26], ghost: 1 },
+  apron: { p: [84, 40, -146], t: [28, 5, -42], ghost: 0 },
+};
+let camTween = null, camName = 'all', roofUser = false;
+const ease = k => k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+function camPose(name) {
+  const c = CAMS[name], p = new THREE.Vector3(...c.p), t = new THREE.Vector3(...c.t);
+  // 画面が縦長のときは、対象が収まるようにカメラを引く
+  const asp = camera.aspect || 1.4, k = name === 'all' ? Math.max(1, 1.5 / asp) : Math.max(1, 1.15 / asp);
+  p.sub(t).multiplyScalar(k).add(t); return { p, t };
+}
+function goCam(name, instant) {
+  const c = CAMS[name]; if (!c) return; camName = name;
+  for (const b of $('camBar').querySelectorAll('[data-cam]')) b.setAttribute('aria-pressed', b.dataset.cam === name);
+  if (!roofUser) { upperGhostTarget = c.ghost; $('layRoof').setAttribute('aria-pressed', c.ghost === 1); }
+  const { p, t } = camPose(name);
+  if (instant || reduceMotion.matches) { camera.position.copy(p); controls.target.copy(t); camTween = null; upperGhost = upperGhostTarget; setUpperOpacity(upperGhost); applyGhostToFlows(); controls.update(); return; }
+  camTween = { p0: camera.position.clone(), t0: controls.target.clone(), p1: p, t1: t, k: 0, dur: 1.5 };
+}
+function stepCamera(dt) {
+  if (camTween) {
+    camTween.k = Math.min(1, camTween.k + dt / camTween.dur); const e = ease(camTween.k);
+    camera.position.lerpVectors(camTween.p0, camTween.p1, e); controls.target.lerpVectors(camTween.t0, camTween.t1, e);
+    if (camTween.k >= 1) camTween = null;
+  }
+  if (Math.abs(upperGhost - upperGhostTarget) > 0.004) { upperGhost += (upperGhostTarget - upperGhost) * Math.min(1, dt * 5); setUpperOpacity(upperGhost); applyGhostToFlows(); }
+  else if (upperGhost !== upperGhostTarget) { upperGhost = upperGhostTarget; setUpperOpacity(upperGhost); applyGhostToFlows(); }
+}
+
+const TOUR = [
+  { cam: 'all', title: '全景', text: '羽田空港をモデルにしたターミナルです。上階を旅客、下階を手荷物が移動します。同じ需要を、従来運用と AI 最適化の 2 通りで同時に計算しています。' },
+  { cam: 'lobby', title: '出発ロビー', text: '旅客は自動手荷物預け機で手荷物を預けます。AI 最適化は、便スケジュールと来港の実績から、20〜50 分先に保安検査場へ着く人数を予測します。' },
+  { cam: 'sec', title: '保安検査場', text: 'AI 最適化は、予測に基づいてレーンを 20 分前に手配し、サイネージで待ちの短い検査場へ旅客を誘導します。従来運用は、待ちが 55 人を超えた後に増員を要請します。' },
+  { cam: 'bhs', title: '手荷物仕分け', text: '手荷物はインライン EDS を通り、ソーターが便ごとのラテラルへ仕分けます。AI 最適化は RFID でタグを読み、待ち個数の少ない EDS ラインへ手荷物を振り分けます。' },
+  { cam: 'ebs', title: '早期手荷物ストレージ', text: '出発まで時間がある手荷物は EBS で保管します。AI 最適化は、ドーリーがラテラルに着いた後、出発の早い便の手荷物から順に放出します。' },
+  { cam: 'apron', title: 'エプロン', text: 'トーイングトラクターがドーリーを引いて機側へ運びます。AI 最適化は、貨物室を閉める時刻と走行距離から逆算して、最終のドーリーを出す時刻を決めます。' },
+];
+let tourOn = false, tourStep = 0, tourT = 0;
+function showTourStep() {
+  const s = TOUR[tourStep]; $('capStep').textContent = `${tourStep + 1} / ${TOUR.length}`; $('capTitle').textContent = s.title; $('capText').textContent = s.text; $('caption').hidden = false; goCam(s.cam);
+}
+function setTour(on) {
+  if (on && reduceMotion.matches) { toast('動きを減らす設定のため、自動ツアーは使えません。カメラのボタンで各エリアへ移動できます。'); on = false; }
+  tourOn = on; $('btnTour').setAttribute('aria-pressed', on); controls.autoRotate = on; controls.autoRotateSpeed = 0.35;
+  if (on) { tourStep = 0; tourT = 0; showTourStep(); } else $('caption').hidden = true;
+}
+function stepTour(dt) { if (!tourOn) return; tourT += dt; if (tourT > 10.5) { tourT = 0; tourStep = (tourStep + 1) % TOUR.length; showTourStep(); } }
+function bindCamera() {
+  for (const b of $('camBar').querySelectorAll('[data-cam]')) b.addEventListener('click', () => { if (tourOn) setTour(false); goCam(b.dataset.cam); });
+  $('btnTour').addEventListener('click', () => setTour(!tourOn));
+  controls.addEventListener('start', () => { camTween = null; if (tourOn) setTour(false); for (const b of $('camBar').querySelectorAll('[data-cam]')) b.setAttribute('aria-pressed', 'false'); });
+  $('layRoof').addEventListener('click', () => { roofUser = $('layRoof').getAttribute('aria-pressed') === 'true'; });
+  reduceMotion.addEventListener('change', () => { if (reduceMotion.matches && tourOn) setTour(false); });
+}

@@ -1,0 +1,96 @@
+// =====================================================================
+// 62 heat & labels : 床の混雑ヒートマップ（上階）と、CSS2DRenderer のラベル（実測値つき）
+// =====================================================================
+const HEAT = { cell: 4, nx: 0, nz: 0, x0: LAY.X0, z0: LAY.ZA, grid: null, acc: null, tex: null, mesh: null, tick: 0 };
+function buildHeat() {
+  HEAT.nx = Math.ceil((LAY.X1 - LAY.X0) / HEAT.cell); HEAT.nz = Math.ceil((LAY.ZL + 4 - LAY.ZA) / HEAT.cell);
+  const n = HEAT.nx * HEAT.nz; HEAT.grid = new Float32Array(n); HEAT.acc = new Float32Array(n); HEAT.tmp = new Float32Array(n);
+  HEAT.data = new Uint8Array(n * 4); HEAT.tex = new THREE.DataTexture(HEAT.data, HEAT.nx, HEAT.nz, THREE.RGBAFormat);
+  HEAT.tex.magFilter = HEAT.tex.minFilter = THREE.LinearFilter; HEAT.tex.colorSpace = THREE.SRGBColorSpace; HEAT.tex.needsUpdate = true;
+  const w = HEAT.nx * HEAT.cell, d = HEAT.nz * HEAT.cell, g = new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2);
+  // PlaneGeometry の UV は v が奥（-z）で 1 になるため、v を反転して z0 側を行 0 にそろえる
+  const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i));
+  HEAT.mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: HEAT.tex, transparent: true, depthWrite: false, toneMapped: false }));
+  HEAT.mesh.position.set(LAY.X0 + w / 2, YU + 0.07, LAY.ZA + d / 2); HEAT.mesh.renderOrder = 2.5; gUpper.add(HEAT.mesh);
+}
+// 密度（人/セル）→ 色。黄 → 橙 → 紅の単色相に近い連続スケール
+const HEAT_STOPS = [[0.6, 255, 200, 40, 0], [2.5, 255, 190, 30, 110], [5.5, 247, 120, 20, 165], [9, 226, 50, 50, 200], [14, 180, 20, 90, 225]];
+function updateHeat(sim, force) {
+  if (!HEAT.mesh.visible) return;
+  if (!force && (HEAT.tick++ % 5)) return;
+  const { nx, nz, cell, grid, acc, tmp, data } = HEAT; acc.fill(0);
+  for (const a of sim.pax) { if (a.lvl || a.z < LAY.ZA) continue; const i = Math.floor((a.x - HEAT.x0) / cell), j = Math.floor((a.z - HEAT.z0) / cell); if (i >= 0 && i < nx && j >= 0 && j < nz) acc[j * nx + i]++; }
+  const k = force ? 1 : 0.22;
+  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {            // 3×3 の平滑化
+    let s = 0, wsum = 0;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= nx || jj >= nz) continue; const w = (di || dj) ? 0.6 : 1; s += acc[jj * nx + ii] * w; wsum += w; }
+    tmp[j * nx + i] = s / wsum * 1.6;
+  }
+  for (let q = 0; q < nx * nz; q++) {
+    const v = grid[q] += (tmp[q] - grid[q]) * k; let r = 0, g = 0, b = 0, al = 0;
+    if (v > HEAT_STOPS[0][0]) {
+      let s = 0; while (s < HEAT_STOPS.length - 2 && v > HEAT_STOPS[s + 1][0]) s++;
+      const A = HEAT_STOPS[s], Bq = HEAT_STOPS[s + 1], u = clamp((v - A[0]) / (Bq[0] - A[0]), 0, 1);
+      r = A[1] + (Bq[1] - A[1]) * u; g = A[2] + (Bq[2] - A[2]) * u; b = A[3] + (Bq[3] - A[3]) * u; al = A[4] + (Bq[4] - A[4]) * u;
+    }
+    const o = q * 4; data[o] = r; data[o + 1] = g; data[o + 2] = b; data[o + 3] = al;
+  }
+  HEAT.tex.needsUpdate = true;
+}
+
+// ---- ラベル ----
+const labels = [], liveEls = {};
+const gLabels = new THREE.Group(); world3d.add(gLabels);
+function addLabel(html, x, y, z, cls, tier, prio) {
+  const el = document.createElement('div'); el.className = 'lbl ' + (cls || ''); el.innerHTML = html;
+  for (const s of el.querySelectorAll('[data-live]')) liveEls[s.dataset.live] = { el: s, box: el, text: '' };
+  const o = new CSS2DObject(el); o.position.set(x, y, z); o.center.set(0.5, 1); gLabels.add(o); labels.push({ o, el, tier: tier || 1, lower: y < YU, prio: prio || 0 });
+  return o;
+}
+function setLive(key, text, cls) {
+  const L = liveEls[key]; if (!L) return;
+  if (L.text !== text) { L.text = text; L.el.textContent = text; }
+  const want = cls || ''; if (L.cls !== want) { if (L.cls) L.box.classList.remove(L.cls); if (want) L.box.classList.add(want); L.cls = want; }
+}
+let labelsOn = true;
+const _lv = new THREE.Vector3(), _kept = [];
+// 距離で出すラベルを絞り、画面上で重なるものは優先度の低い方を隠す
+function updateLabelVisibility() {
+  const dist = camera.position.distanceTo(controls.target), narrow = isNarrow.matches, w = wrapEl.clientWidth, h = wrapEl.clientHeight;
+  const t2 = narrow ? 190 : 360, t3 = narrow ? 110 : 210;
+  _kept.length = 0;
+  const cands = labels.filter(L => labelsOn && (L.tier === 1 ? true : L.tier === 2 ? dist < t2 : L.tier === 3 ? dist < t3 : dist > 260));
+  const lowFirst = upperGhostTarget > 0.5;        // 上階を透かしているときは下階のラベルを優先する
+  cands.sort((a, b) => (a.tier - b.tier) || (b.prio - a.prio) || ((a.lower === lowFirst ? 0 : 1) - (b.lower === lowFirst ? 0 : 1)) || ((b.o.visible ? 1 : 0) - (a.o.visible ? 1 : 0)));
+  for (const L of labels) L.want = false;
+  for (const L of cands) {
+    _lv.copy(L.o.position).project(camera); if (_lv.z > 1 || Math.abs(_lv.x) > 1.1 || Math.abs(_lv.y) > 1.1) continue;
+    const sx = (_lv.x * 0.5 + 0.5) * w, sy = (-_lv.y * 0.5 + 0.5) * h;
+    if (L.o.visible && L.el.offsetWidth) { L.w = L.el.offsetWidth; L.h = L.el.offsetHeight; }
+    const bw = (L.w || L.el.textContent.length * 6.5 + 14) + 6, bh = (L.h || 32) + 4, x0 = sx - bw / 2, y0 = sy - bh;
+    let hit = false; for (const k of _kept) if (x0 < k[2] && x0 + bw > k[0] && y0 < k[3] && y0 + bh > k[1]) { hit = true; break; }
+    if (hit) continue; _kept.push([x0, y0, x0 + bw, y0 + bh]); L.want = true;
+  }
+  for (const L of labels) if (L.o.visible !== L.want) L.o.visible = L.want;
+}
+function updateLiveLabels(sim, world) {
+  const t = sim.t;
+  for (let c = 0; c < 3; c++) {
+    const cp = sim.cp[c], open = Math.min(cp.open, cp.limit), w = cp.q.length * P.secSvcMean / Math.max(0.5, open);
+    setLive('cp' + c, `レーン ${open}/${LAY.cpLanes}・待ち ${cp.q.length} 人（約 ${Math.round(w)} 分）`, cp.limit < 99 ? 'down' : w >= 8 ? 'alert' : '');
+  }
+  for (let i = 0; i < 6; i++) setLive('isl' + i, sim.isl[i].q.length ? `待ち ${sim.isl[i].q.length} 人` : '');
+  for (let l = 0; l < 3; l++) { const e = sim.eds[l], down = sim.scn.edsDown === l; setLive('eds' + l, down ? `停止中・滞留 ${e.q.length} 個` : `待ち ${e.q.length} 個`, down ? 'down' : e.q.length > 30 ? 'alert' : ''); }
+  let re = 0; for (const b of sim.bags) if (b.st === B.LOOP && b.dest === D.NONE) re++;
+  setLive('loop', `トレイ ${P.loopCap} のうち ${sim.loopN} 個・再循環 ${re} 個`, re > 25 ? 'alert' : '');
+  setLive('ebs', `保管 ${sim.ebs.n} 個 / ${sim.ebs.cells.length} 個`);
+  setLive('mes', `待ち ${sim.mes.q.length} 個`, sim.mes.q.length > 12 ? 'alert' : '');
+  setLive('hold', `${sim.holdN} 個`, sim.holdN > 20 ? 'alert' : '');
+  for (let k = 0; k < 12; k++) { const f = sim.lat[k].f; setLive('lat' + k, f >= 0 ? world.flights[f].code : ''); }
+  for (let gi = 0; gi < LAY.gates.length; gi++) {
+    let txt = ''; let best = null;
+    for (const f of world.flights) if (f.gate === gi && f.dep > t - 1 && (!best || f.dep < best.dep)) best = f;
+    if (best && best.dep - t < 150) { const fs = sim.flightState(best.id); txt = `${best.code} ${hhmm(best.dep)}` + (t >= best.dep - P.boardStart ? `・搭乗 ${fs.boarded}/${best.paxOut}` : ''); }
+    setLive('gate' + gi, txt);
+  }
+}

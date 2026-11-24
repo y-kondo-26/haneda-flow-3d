@@ -1,0 +1,115 @@
+// =====================================================================
+// 47 sim (計測・シナリオ・1 ステップ) : 画面の数値はすべてここで数えた実測値
+// =====================================================================
+const NB = Math.ceil((DAY1 - DAY0) / 15);
+Sim.prototype.bin15 = function () { return clamp(Math.floor((this.t - DAY0) / 15), 0, NB - 1); };
+Sim.prototype.initKpi = function () {
+  const z = () => new Float32Array(NB);
+  this.kpi = { arrivals: z(), bagArr: z(), waitSum: z(), waitN: z(), bagSeries: z(), bagSeriesN: z(), loadSeries: z(), missSeries: z(), closedSeries: z(), laneSeries: z(), qMaxSeries: z(), flightSeries: z(), cleanSeries: z(),
+    secSum: 0, secN: 0, secMax: 0, maxQ: 0, maxQt: 0, laneMin: 0, dropWaitSum: 0, dropN: 0, guided: 0, boarded: 0, missedPax: 0,
+    bagsIn: 0, loaded: 0, missedBags: 0, closedBags: 0, closedFlights: 0, cleanFlights: 0, bagTimeSum: 0, bagTimeN: 0,
+    noRead: 0, reads: 0, missort: 0, prioritized: 0, recircLaps: 0, holdLost: 0, ebsOut: 0, rebalanced: 0, tugWaitSum: 0, tugWaitN: 0,
+    secPerMin: new Uint16Array(DAY1 + 2), loadPerMin: new Uint16Array(DAY1 + 2) };
+  this.gd = new Int32Array(9); this.gdLast = new Int32Array(9); this.rebLast = 0; this.nextReport = DAY0 + 10; this.arrTugs = []; this.timers = [];
+};
+Sim.prototype.recordSecWait = function (c, w) {
+  const k = this.kpi, b = this.bin15();
+  k.secSum += w; k.secN++; if (w > k.secMax) k.secMax = w; k.waitSum[b] += w; k.waitN[b]++; k.secPerMin[Math.min(DAY1, this.t | 0)]++;
+  const cp = this.cp[c]; cp.served++; cp.waitEma += (w - cp.waitEma) * 0.08;
+};
+Sim.prototype.tickKpi = function (dt) {
+  const k = this.kpi; let q = 0;
+  const b = this.bin15();
+  for (const cp of this.cp) { k.laneMin += cp.open * dt; k.laneSeries[b] += cp.open * dt; q += cp.q.length; }
+  if (q > k.maxQ) { k.maxQ = q; k.maxQt = this.t; }
+  if (q > k.qMaxSeries[b]) k.qMaxSeries[b] = q;
+};
+Sim.prototype.closeFlight = function (f, fs) {
+  const k = this.kpi, miss = Math.max(0, fs.bagsIn - fs.bagsLoaded);
+  fs.bagsMissed = miss; k.missedBags += miss; k.closedBags += fs.bagsIn; k.closedFlights++; if (miss === 0) k.cleanFlights++;
+  k.missSeries[this.bin15()] += miss; k.closedSeries[this.bin15()] += fs.bagsIn; k.flightSeries[this.bin15()]++; if (miss === 0) k.cleanSeries[this.bin15()]++;
+  if (fs.lat >= 0) { const Lt = this.lat[fs.lat]; if (Lt.f === f.id) { for (const b of Lt.slots) { b.missed = true; b.st = B.GONE; } Lt.slots.length = 0; Lt.n = 0; Lt.res = 0; Lt.f = -1; } }
+  if (fs.train) { const tug = fs.train; for (const b of tug.bags) b.st = B.GONE; tug.bags = []; tug.st = 0; tug.f = null; fs.train = null; }
+  this.tugReq = this.tugReq.filter(r => r.f !== f);
+  for (const b of this.bags) if (b.f === f && b.st !== B.GONE && b.st < B.ARR) { b.missed = true; b.c = 2; }
+  if (miss >= 5) this.addLog('ops', `${f.code} 便（${hhmm(f.dep)} 発）は手荷物 ${miss} 個を搭載できずに出発しました。`);
+};
+Sim.prototype.spawnArrivalBags = function (f, fs) {
+  const n = Math.min(100, Math.round(f.paxIn * 0.36)), sp = standSpot(f.gate);
+  const tug = { id: 100 + f.id, st: 8, x: sp[0], z: sp[1], hx: 0, hz: 1, path: null, s: 0, len: 0, f, bags: [], tEnd: f.arr + 8, kind: 1, credit: 0 };
+  setTugPath(tug, [[sp[0], sp[1]], [sp[0], BHS.zRoad], [BHS.arrIn.x + 6, BHS.zRoad], [BHS.arrIn.x + 6, BHS.arrIn.z], [BHS.arrIn.x + 2, BHS.arrIn.z + 2]]);
+  for (let i = 0; i < n; i++) {
+    const b = { id: this.bagSeq++, f, u: ((i * 7919 + f.id * 31) % 1000) / 1000, x: sp[0], y: 1, z: sp[1], st: B.TRAIN, wp: null, next: 0, spd: SPD.belt, t0: this.t, store: 0, tS: 0,
+      line: 3, read: true, mis: false, missed: false, dest: 0, uDest: -1, uLoop: 0, dist: 0, laps: 0, lat: (f.gate + i) % 2, slot: i, tEnd: 0, c: 4, xfer: false, tug, k: 0, tRoute: 0 };
+    tug.bags.push(b); this.bags.push(b);
+  }
+  this.arrTugs.push(tug);
+};
+
+// ---- シナリオ（両方のシミュレーションへ同時に入れる）----
+Sim.prototype.rerouteEds = function (line) {         // コレクター上にある手荷物を迂回先へ流す
+  for (const b of this.bags) if (b.st === B.MOVE && b.next === NEXT.EDS_Q && b.line === line && b.y < 2 && Math.abs(b.z - 50) < 1) {
+    this.eds[line].n--; const l2 = b.line = this.pickEds(b.x, line), ex = BHS.edsX[l2]; this.eds[l2].n++;
+    b.wp = [[ex + (ex >= b.x ? -1 : 1), BY, b.z], [ex, BY, BHS.zEdsIn + 3]];
+  }
+};
+Sim.prototype.scenarioEds = function (line, dur) {
+  this.scn.edsDown = line; this.scn.edsUntil = this.t + dur; this.scn.edsSwitchAt = this.t + (this.mode ? 0 : P.base.edsSwitch);
+  this.addLog('scn', `インライン EDS ${line + 1} 号機が停止しました（復旧見込み ${hhmm(this.t + dur)}）。`);
+  if (this.mode === 1) { this.rerouteEds(line); this.addLog('ai', `EDS ${line + 1} 号機の停止を検知しました。コレクターを流れる手荷物を、残る 2 ラインのうち待ち個数が少ないラインへ振り分けます。滞留中は出発の早い便の手荷物を先に通します。`); }
+  else { setTimeoutSim(this, P.base.edsSwitch, () => { if (this.scn.edsDown === line) { this.rerouteEds(line); this.addLog('ops', `係員が迂回経路へ切り替えました。${line + 1} 号機へ向かう手荷物は、固定の迂回先である ${(line + 1) % 3 + 1} 号機へ流れます。`); } }); }
+};
+Sim.prototype.scenarioCp = function (c, dur) {
+  const cp = this.cp[c]; cp.limit = 1; cp.limitUntil = this.t + dur;
+  this.addLog('scn', `保安検査場 ${LAY.cps[c].name} の検査機器が故障しました。${hhmm(this.t + dur)} まで 1 レーンだけで運用します。`);
+  if (this.mode === 1) { this.addLog('ai', `サイネージの案内を切り替え、出発ロビーの旅客を保安検査場 ${'ABC'.replace(LAY.cps[c].name, '').split('').join(' と ')} へ誘導します。`); this.aiPlanLanes(); }
+};
+Sim.prototype.scenarioExtra = function (f) {
+  this.addLog('scn', `臨時便 ${f.code}（${hhmm(f.dep)} 発、${f.paxOut} 名、ゲート ${LAY.gates[f.gate].no}）が追加されました。`);
+  if (this.mode === 1) { this.addLog('ai', `臨時便 ${f.code} を到着予測に反映しました。チェックイン島 ${LAY.islands[f.island].name} に近い検査場のレーン計画を作り直します。`); this.aiPlanLanes(); }
+  else this.addLog('ops', `人員計画は 1 時間刻みの固定値のため、臨時便の旅客には待ち行列が伸びてから対応します。`);
+};
+
+// AI 最適化の定期レポート（誘導・振り分けの実績を 10 分ごとに記録する）
+Sim.prototype.aiReport = function () {
+  if (this.mode !== 1 || this.t < this.nextReport) return;
+  this.nextReport = this.t + 10;
+  let bi = -1, bv = 14;
+  for (let i = 0; i < 9; i++) { const d = this.gd[i] - this.gdLast[i]; if (d > bv) { bv = d; bi = i; } this.gdLast[i] = this.gd[i]; }
+  if (bi >= 0) {
+    const from = Math.floor(bi / 3), to = bi % 3, w = c => { const cp = this.cp[c]; return Math.round(cp.q.length * P.secSvcMean / Math.max(1, Math.min(cp.open, cp.limit))); };
+    this.addLog('ai', `サイネージで旅客 ${bv} 人を保安検査場 ${LAY.cps[from].name} から ${LAY.cps[to].name} へ誘導しました。現在の待ちは ${LAY.cps[from].name} が約 ${w(from)} 分、${LAY.cps[to].name} が約 ${w(to)} 分です。`);
+  }
+  const rb = this.kpi.rebalanced - this.rebLast; this.rebLast = this.kpi.rebalanced;
+  if (rb >= 25) this.addLog('ai', `直近 10 分間に手荷物 ${rb} 個を、待ち個数が少ない EDS ラインへ振り分けました。`);
+};
+
+Sim.prototype.step = function (dt) {
+  this.t += dt;
+  if (this.timers.length) this.timers = this.timers.filter(tm => tm.t > this.t ? true : (tm.fn(), false));
+  this.spawnPax(); this.spawnXferBags(); this.controlSecurity();
+  this.stepFlights(dt); this.stepPax(dt);
+  this.stepEds(dt); this.stepBags(dt); this.stepMakeup(dt);
+  this.tickKpi(dt); this.aiReport();
+};
+
+// 画面に出す値（単位つき）。直近 60 分の処理数は 1 分刻みのカウンターから数える
+Sim.prototype.view = function () {
+  const k = this.kpi, t = this.t | 0; let pax60 = 0, bag60 = 0;
+  for (let m = Math.max(0, t - 59); m <= t; m++) { pax60 += k.secPerMin[m]; bag60 += k.loadPerMin[m]; }
+  return {
+    waitAvg: k.secN ? k.secSum / k.secN : 0, waitMax: k.secMax, maxQ: k.maxQ, laneHours: k.laneMin / 60 * P.staffPerLane,
+    bagTime: k.bagTimeN ? k.bagTimeSum / k.bagTimeN : 0, mishandled: k.closedBags ? k.missedBags / k.closedBags * 1000 : 0,
+    missedBags: k.missedBags, closedBags: k.closedBags, clean: k.closedFlights ? k.cleanFlights / k.closedFlights * 100 : 100,
+    cleanFlights: k.cleanFlights, closedFlights: k.closedFlights, pax60, bag60, noReadRate: k.reads ? k.noRead / k.reads * 100 : 0,
+    recircLaps: k.recircLaps, missedPax: k.missedPax, boarded: k.boarded, guided: k.guided, secN: k.secN, loaded: k.loaded,
+  };
+};
+// 直近 60 分（15 分刻みの集計 4 本分）の値
+Sim.prototype.view60 = function () {
+  const k = this.kpi, b1 = this.bin15(), b0 = Math.max(0, b1 - 3), v = this.view();
+  let ws = 0, wn = 0, q = 0, ln = 0, bs = 0, bn = 0, ms = 0, cl = 0, fl = 0, cf = 0;
+  for (let b = b0; b <= b1; b++) { ws += k.waitSum[b]; wn += k.waitN[b]; q = Math.max(q, k.qMaxSeries[b]); ln += k.laneSeries[b]; bs += k.bagSeries[b]; bn += k.bagSeriesN[b]; ms += k.missSeries[b]; cl += k.closedSeries[b]; fl += k.flightSeries[b]; cf += k.cleanSeries[b]; }
+  return Object.assign(v, { waitAvg: wn ? ws / wn : 0, maxQ: q, laneHours: ln / 60 * P.staffPerLane, bagTime: bn ? bs / bn : 0, mishandled: cl ? ms / cl * 1000 : 0, missedBags: ms, closedBags: cl,
+    clean: fl ? cf / fl * 100 : 100, cleanFlights: cf, closedFlights: fl });
+};

@@ -1,0 +1,77 @@
+// =====================================================================
+// 52 scene (敷地) : 東京湾・空港島・滑走路 4 本・誘導路・ランドサイドの道路と駅
+// 実際の配置を写したものではなく、羽田をモデルにした構想図。ターミナルのエアサイドが -z
+// =====================================================================
+const mGround = M('s-ground'), mApron = M('s-apron'), mRunway = M('s-runway'), mRoad = M('s-road');
+const mMark = M('s-mark', {}, THREE.MeshBasicMaterial);
+const mBldg = M('s-bldg'), mBldg2 = M('s-bldg2'), mEdge = M('s-edge'), mMachine = M('s-machine'), mBelt = M('s-belt');
+const mGlass = M('s-glass', { transparent: true, opacity: 0.45, depthWrite: false });
+const RUNWAYS = [
+  { id: 'A', name: 'A 滑走路', n: ['16R', '34L'], x: 30, z: -212, len: 900, rot: 0 },
+  { id: 'C', name: 'C 滑走路', n: ['16L', '34R'], x: 70, z: -430, len: 940, rot: 0 },
+  { id: 'B', name: 'B 滑走路', n: ['04', '22'], x: -560, z: -150, len: 620, rot: 0.96 },
+  { id: 'D', name: 'D 滑走路', n: ['05', '23'], x: 700, z: -640, len: 640, rot: -0.62 },
+];
+const waterTex = canvasTex(256, 256, (g, w, h) => {
+  g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(0,0,0,0.07)'; g.lineWidth = 1.2;
+  for (let i = 0; i < 26; i++) { const y = (i * 53) % h, x = (i * 97) % w, l = 30 + (i * 31) % 70; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l / 2, y - 3, x + l, y); g.stroke(); }
+});
+waterTex.wrapS = waterTex.wrapT = THREE.RepeatWrapping; waterTex.repeat.set(70, 70);
+const mWater = M('s-water', { map: waterTex, roughness: 0.55, metalness: 0.1 });
+
+function buildSite() {
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000).rotateX(-Math.PI / 2), mWater);
+  water.position.y = -2.2; water.receiveShadow = false; gSite.add(water);
+  const land = pts => { const s = new THREE.Shape(pts.map(p => new THREE.Vector2(p[0], -p[1]))); const g = new THREE.ExtrudeGeometry(s, { depth: 2.4, bevelEnabled: false }); g.rotateX(-Math.PI / 2); g.translate(0, -2.5, 0); return g; };
+  // 空港島（護岸の角を落とした多角形）と D 滑走路の島、対岸
+  addGeo(mGround, land([[-760, 250], [-330, 300], [520, 300], [660, 170], [700, -40], [690, -300], [600, -500], [300, -520], [-330, -520], [-560, -420], [-800, -250], [-830, 60]]));
+  const d = RUNWAYS[3], c = Math.cos(d.rot), s = Math.sin(d.rot), rp = (lx, lz) => [d.x + lx * c + lz * s, d.z - lx * s + lz * c];
+  addGeo(mGround, land([rp(-380, 70), rp(380, 70), rp(400, 0), rp(380, -70), rp(-380, -70), rp(-400, 0)]));
+  addGeo(mGround, land([rp(-330, 70), rp(-250, 70), [520, -505], [430, -505]]));            // 連絡誘導路の桟橋
+  addGeo(mGround, land([[-1500, 380], [1500, 380], [1500, 1500], [-1500, 1500]]));          // 対岸の市街地
+  addGeo(mGround, land([[-1500, 250], [-880, 250], [-880, 380], [-1500, 380]]));
+  // エプロンと誘導路
+  flat(mApron, 470, 128, 26, 0.02, -78); flat(mApron, 62, 70, 215, 0.02, -62);
+  strip(mRoad, -420, -168, 520, -168, 20, 0.03); strip(mRoad, -420, -256, 520, -256, 18, 0.03);
+  for (const x of [-360, -150, 60, 270, 470]) strip(mRoad, x, -142, x, -212, 16, 0.03);
+  for (const x of [-250, 130, 420]) strip(mRoad, x, -256, x, -430, 16, 0.03);
+  strip(mMark, -420, -168, 520, -168, 0.5, 0.06); strip(mMark, -420, -256, 520, -256, 0.5, 0.06);
+  // 滑走路
+  for (const r of RUNWAYS) {
+    const cs = Math.cos(r.rot), sn = Math.sin(r.rot), P2 = (l, o = 0) => [r.x + l * cs + o * sn, r.z - l * sn + o * cs];
+    const a = P2(-r.len / 2), b = P2(r.len / 2);
+    strip(mRunway, a[0], a[1], b[0], b[1], 24, 0.05);
+    for (let l = -r.len / 2 + 60; l < r.len / 2 - 60; l += 26) { const p = P2(l), q = P2(l + 13); strip(mMark, p[0], p[1], q[0], q[1], 0.7, 0.09); }
+    for (const e of [-1, 1]) {
+      for (let k = -4; k <= 4; k++) { if (!k) continue; const p = P2(e * (r.len / 2 - 8), k * 2.3), q = P2(e * (r.len / 2 - 20), k * 2.3); strip(mMark, p[0], p[1], q[0], q[1], 1.1, 0.09); }
+      for (const l of [70, 110, 150]) for (const o of [-6.5, 6.5]) { const p = P2(e * (r.len / 2 - l), o), q = P2(e * (r.len / 2 - l - 10), o); strip(mMark, p[0], p[1], q[0], q[1], 2.4, 0.09); }
+      // 指示標識（数字）は CanvasTexture で作る
+      const num = r.n[e < 0 ? 0 : 1], tex = canvasTex(256, 128, (g, w, h) => { g.clearRect(0, 0, w, h); g.fillStyle = '#fff'; g.font = '700 92px "B612", "Arial Narrow", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(num, w / 2, h / 2 + 6); });
+      const dm = new THREE.Mesh(new THREE.PlaneGeometry(20, 10).rotateX(-Math.PI / 2), M('s-mark', { map: tex, transparent: true, depthWrite: false }, THREE.MeshBasicMaterial));
+      const p = P2(e * (r.len / 2 - 42)); dm.position.set(p[0], 0.12, p[1]); dm.rotation.y = r.rot + (e < 0 ? -Math.PI / 2 : Math.PI / 2); gSite.add(dm);
+    }
+    addLabel(`${r.name} <span class="num">${r.n[0]}/${r.n[1]}</span>`, P2(r.id === 'A' ? -230 : r.id === 'C' ? 250 : 0)[0], 6, P2(0)[1], 'rw', 4);
+  }
+  // 国内線地区（A 滑走路と C 滑走路の間）は低い白模型で示す
+  for (const [x, z, w, dd, h] of [[-120, -330, 300, 34, 13], [-120, -352, 240, 14, 8], [170, -338, 250, 30, 12], [330, -342, 60, 22, 22], [20, -300, 16, 16, 44]]) box(mBldg2, w, h, dd, x, h / 2, z);
+  cyl(mBldg, 7, 5, 20, 46.5, -300, 12, 10);                                                    // 管制塔
+  // ランドサイド: 高架道路（出発階カーブサイド）・駅・駐車場
+  box(mRoad, 380, 0.8, 16, 0, YU - 0.4, 98); box(mEdge, 380, 1.1, 0.6, 0, YU + 0.4, 106.3);
+  for (let x = -180; x <= 180; x += 40) box(mBldg2, 2.4, YU - 0.8, 2.4, x, (YU - 0.8) / 2, 98);
+  strip(mRoad, -190, 98, -420, 190, 16, YU - 0.8, 0.8); strip(mRoad, 190, 98, 420, 190, 16, YU - 0.8, 0.8);
+  flat(mRoad, 420, 20, 0, 0.04, 100);                                                          // 到着階の車道
+  box(mBldg2, 130, 12, 54, 96, 6, 168); box(mBldg2, 130, 0.8, 54, 96, 12.5, 168);              // 駐車場
+  for (let k = 1; k < 3; k++) box(mEdge, 131, 0.5, 55, 96, k * 4, 168);
+  // 駅と連絡通路（モノレール・鉄道）
+  box(mBldg, 26, 9, 40, 196, YU + 2.5, 66); box(mGlass, 24, 5, 12, 176, YU + 3, 62);
+  box(mBldg2, 30, YU - 2, 44, 196, (YU - 2) / 2, 66);
+  strip(mEdge, 208, 320, 208, -40, 5, YU + 9, 1.2); strip(mEdge, 208, -40, 360, -150, 5, YU + 9, 1.2);
+  for (let z = -20; z < 320; z += 34) box(mBldg2, 2, YU + 9, 2, 208, (YU + 9) / 2, z);
+  box(mMachine, 4, 3.4, 34, 208, YU + 11.9, 70);                                               // 停車中の車両
+  // 対岸の街区
+  const rr = mulberry32(77);
+  for (let i = 0; i < 90; i++) { const x = -1100 + rr() * 2200, z = 420 + rr() * 420, h = 6 + rr() * rr() * 46, w = 20 + rr() * 50; box(mBldg2, w, h, 18 + rr() * 40, x, h / 2, z); }
+  flush(gSite, { cast: false, receive: true });
+  gSite.children.forEach(m => { if (m.material === mBldg || m.material === mBldg2 || m.material === mMachine) m.castShadow = true; });
+  themeHooks.push(() => { mWater.color.set(TH.c['s-water']); });
+}
