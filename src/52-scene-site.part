@@ -9,7 +9,7 @@ const mGlass = M('s-glass', { transparent: true, opacity: 0.45, depthWrite: fals
 const RUNWAYS = [
   { id: 'A', name: 'A 滑走路', n: ['16R', '34L'], x: 30, z: -212, len: 900, rot: 0 },
   { id: 'C', name: 'C 滑走路', n: ['16L', '34R'], x: 70, z: -430, len: 940, rot: 0 },
-  { id: 'B', name: 'B 滑走路', n: ['04', '22'], x: -560, z: -150, len: 620, rot: 0.96 },
+  { id: 'B', name: 'B 滑走路', n: ['04', '22'], x: -560, z: -300, len: 500, rot: 0.5 },
   { id: 'D', name: 'D 滑走路', n: ['05', '23'], x: 700, z: -640, len: 640, rot: -0.62 },
 ];
 const waterTex = canvasTex(256, 256, (g, w, h) => {
@@ -24,15 +24,15 @@ function buildSite() {
   water.position.y = -2.2; water.receiveShadow = false; gSite.add(water);
   const land = pts => { const s = new THREE.Shape(pts.map(p => new THREE.Vector2(p[0], -p[1]))); const g = new THREE.ExtrudeGeometry(s, { depth: 2.4, bevelEnabled: false }); g.rotateX(-Math.PI / 2); g.translate(0, -2.5, 0); return g; };
   // 空港島（護岸の角を落とした多角形）と D 滑走路の島、対岸
-  addGeo(mGround, land([[-760, 250], [-330, 300], [520, 300], [660, 170], [700, -40], [690, -300], [600, -500], [300, -520], [-330, -520], [-560, -420], [-800, -250], [-830, 60]]));
+  addGeo(mGround, land([[-296, 300], [520, 300], [660, 170], [700, -40], [690, -300], [600, -500], [300, -520], [-330, -520], [-620, -470], [-830, -300], [-810, -150], [-470, -66], [-330, 20], [-296, 110]]));   // 南西側は河口の水面
   const d = RUNWAYS[3], c = Math.cos(d.rot), s = Math.sin(d.rot), rp = (lx, lz) => [d.x + lx * c + lz * s, d.z - lx * s + lz * c];
   addGeo(mGround, land([rp(-380, 70), rp(380, 70), rp(400, 0), rp(380, -70), rp(-380, -70), rp(-400, 0)]));
   addGeo(mGround, land([rp(-330, 70), rp(-250, 70), [520, -505], [430, -505]]));            // 連絡誘導路の桟橋
   addGeo(mGround, land([[-1500, 380], [1500, 380], [1500, 1500], [-1500, 1500]]));          // 対岸の市街地
-  addGeo(mGround, land([[-1500, 250], [-880, 250], [-880, 380], [-1500, 380]]));
+  addGeo(mGround, land([[-1500, 150], [-560, 220], [-520, 380], [-1500, 380]]));                // 河口の対岸
   // エプロンと誘導路
   flat(mApron, 470, 128, 26, 0.02, -78); flat(mApron, 62, 70, 215, 0.02, -62);
-  strip(mRoad, -420, -168, 520, -168, 20, 0.03); strip(mRoad, -420, -256, 520, -256, 18, 0.03);
+  strip(mRoad, -400, -168, 520, -168, 20, 0.03); strip(mRoad, -420, -256, 520, -256, 18, 0.03);
   for (const x of [-360, -150, 60, 270, 470]) strip(mRoad, x, -142, x, -212, 16, 0.03);
   for (const x of [-250, 130, 420]) strip(mRoad, x, -256, x, -430, 16, 0.03);
   strip(mMark, -420, -168, 520, -168, 0.5, 0.06); strip(mMark, -420, -256, 520, -256, 0.5, 0.06);
@@ -59,6 +59,8 @@ function buildSite() {
   box(mRoad, 380, 0.8, 16, 0, YU - 0.4, 98); box(mEdge, 380, 1.1, 0.6, 0, YU + 0.4, 106.3);
   for (let x = -180; x <= 180; x += 40) box(mBldg2, 2.4, YU - 0.8, 2.4, x, (YU - 0.8) / 2, 98);
   strip(mRoad, -190, 98, -420, 190, 16, YU - 0.8, 0.8); strip(mRoad, 190, 98, 420, 190, 16, YU - 0.8, 0.8);
+  strip(mRoad, -420, 190, -600, 262, 16, YU - 0.8, 0.8);                                        // 河口を渡る連絡橋
+  for (const k of [0.2, 0.5, 0.8]) { box(mBldg2, 2.4, YU + 1.4, 2.4, lerp(-190, -420, k), (YU - 2.2) / 2, lerp(98, 190, k)); box(mBldg2, 2.4, YU + 1.4, 2.4, lerp(-420, -600, k), (YU - 2.2) / 2, lerp(190, 262, k)); }
   flat(mRoad, 420, 20, 0, 0.04, 100);                                                          // 到着階の車道
   box(mBldg2, 130, 12, 54, 96, 6, 168); box(mBldg2, 130, 0.8, 54, 96, 12.5, 168);              // 駐車場
   for (let k = 1; k < 3; k++) box(mEdge, 131, 0.5, 55, 96, k * 4, 168);

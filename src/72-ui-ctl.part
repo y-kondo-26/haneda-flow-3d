@@ -24,7 +24,7 @@ function updateFids() {
   }).join('') || '<li>本日の出発便は終了しました。</li>';
 }
 let toastTimer = 0;
-function toast(text) { const el = $('toast'); el.textContent = text; el.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('on'), 4200); }
+function toast(text, kind) { const el = $('toast'); el.textContent = text; el.dataset.kind = kind || 'info'; el.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('on'), 4200); }
 
 function setMode(m, quiet) {
   active = m; $('modeBase').setAttribute('aria-checked', m === 0); $('modeAi').setAttribute('aria-checked', m === 1);
@@ -39,7 +39,7 @@ function refreshUi(force) {
   $('clock').textContent = hhmm(sims[0].t);
   updateKpi(); updateCharts(); updateLog(); if (logView === 'fids') updateFids();
   updateLiveLabels(sims[active], world);
-  if (force) { updateHeat(sims[active], true); updateFlows(sims[active]); updateAircraft(sims[active], world); }
+  if (force) { updateHeat(sims[active], true); updateFlows(sims[active]); updateAircraft(sims[active], world); updateTrack(sims[active]); }
   for (const [id, on] of [['scnEds', sims[0].scn.edsDown >= 0], ['scnCp', sims[0].cp.some(c => c.limit < 99)], ['scnExtra', world.flights.some(f => f.extra && f.dep > sims[0].t)]]) {
     const b = $(id); b.dataset.active = on ? '1' : '0'; b.disabled = on || sims[0].t > DAY1 - 130;
   }
@@ -50,10 +50,22 @@ function resetSim(until) {
   for (let t = DAY0; t < until - 1e-6; t += 0.05) { sims[0].step(0.05); sims[1].step(0.05); }
   logSig = '';
 }
+// 起動時: 05:00 から最初に見せる時刻まで、画面を固めないように小分けにして計算する
+async function prewarm(until, onProgress) {
+  world = buildWorld(SEED); sims = [new Sim(world, 0), new Sim(world, 1)];
+  let t = DAY0;
+  while (t < until - 1e-6) {
+    const t0 = performance.now();
+    while (t < until - 1e-6 && performance.now() - t0 < 70) { for (let i = 0; i < 20 && t < until - 1e-6; i++, t += 0.1) { sims[0].step(0.1); sims[1].step(0.1); } }   // 起動時だけ 0.1 分刻み
+    onProgress((t - DAY0) / (until - DAY0));
+    await new Promise(r => { const ch = new MessageChannel(); ch.port1.onmessage = () => r(); ch.port2.postMessage(0); });   // タイマーと違い、裏のタブでも間引かれない
+  }
+  logSig = '';
+}
 function placeControls() {       // スマホ幅では、事象・表示の操作と凡例を下のシートへ移す
   if (isNarrow.matches) { $('sheetSlot').append($('ctlBars'), $('legend')); }
   else { $('dockSlot').append($('ctlBars')); $('stageWrap').insertBefore($('legend'), $('toast')); }
-  $('legend').open = isNarrow.matches || wrapEl.clientWidth >= 900;      // 舞台が狭いときは凡例をたたんでおく
+  $('legend').open = isNarrow.matches || (wrapEl.clientWidth >= 900 && wrapEl.clientHeight >= 700);      // 舞台が狭いときは凡例をたたんでおく
 }
 function pressGroup(ids, on) { for (const id of ids) $(id).setAttribute('aria-pressed', id === on); }
 
@@ -73,12 +85,12 @@ function bindUi() {
     requestAnimationFrame(() => { updateCharts(); });
   });
   // ---- シナリオ: 両方のシミュレーションへ同じ時刻に入れる ----
-  $('scnEds').addEventListener('click', () => { for (const s of sims) s.scenarioEds(1, 45); toast('インライン EDS 2 号機を 45 分間停止しました。'); goCam('bhs'); refreshUi(); });
-  $('scnCp').addEventListener('click', () => { for (const s of sims) s.scenarioCp(1, 30); toast('保安検査場 B を 30 分間、1 レーンに制限しました。'); goCam('sec'); refreshUi(); });
+  $('scnEds').addEventListener('click', () => { for (const s of sims) s.scenarioEds(1, 45); toast('インライン EDS 2 号機を 45 分間停止しました。', 'scn'); goCam('bhs'); refreshUi(); });
+  $('scnCp').addEventListener('click', () => { for (const s of sims) s.scenarioCp(1, 30); toast('保安検査場 B を 30 分間、1 レーンに制限しました。', 'scn'); goCam('sec'); refreshUi(); });
   $('scnExtra').addEventListener('click', () => {
     const f = addExtraFlight(world, sims[0].t);
     if (!f) { toast('オープンスポットが空いていないため、臨時便を追加できません。'); return; }
-    for (const s of sims) s.scenarioExtra(f); toast(`臨時便 ${f.code}（${hhmm(f.dep)} 発、${f.paxOut} 名）を追加しました。`); refreshUi();
+    for (const s of sims) s.scenarioExtra(f); toast(`臨時便 ${f.code}（${hhmm(f.dep)} 発、${f.paxOut} 名）を追加しました。`, 'scn'); refreshUi();
   });
   // ---- 表示の切替 ----
   const toggle = (id, fn) => $(id).addEventListener('click', e => { const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'; e.currentTarget.setAttribute('aria-pressed', on); fn(on); });

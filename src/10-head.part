@@ -1,21 +1,21 @@
 <title>羽田フローツイン</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=B612:wght@400;700&family=B612+Mono:wght@400;700&family=BIZ+UDPGothic:wght@400;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=B612:wght@400;700&family=BIZ+UDPGothic:wght@400;700&display=swap">
 <style>
 /* レイアウト: 左に 3D の舞台（建築模型 / 夜のターミナル）、右に運用管制の計器盤。舞台の上には誘導路の標識板を模した切替と操作だけを置く */
 :root {
   /* UI */
   --bg: #E6EAED; --surface: #F7F9FA; --glass: rgba(247, 249, 250, .86); --ink: #17212B; --ink-2: #4D5C69; --ink-3: #7F8D99;
   --line: #C6CFD7; --line-2: #DCE2E7; --sign: #F2B600; --sign-ink: #1B1A12; --plate: #1D262E; --plate-ink: #F4F6F7;
-  --good: #0A7650; --bad: #BF2A2A; --focus: #0B57D0; --base-c: #66737F; --ai-c: #B88A00; --grid: #D5DCE2;
+  --good: #0A7650; --bad: #BF2A2A; --focus: #0B57D0; --base-c: #66737F; --ai-c: #B88A00; --grid: #D5DCE2; --lbl-major: #1D262E; --lbl-major-ink: #F4F6F7;
   /* 流れの色（3D・凡例・ラベルで共通） */
   --pax: #2458C5; --pax-q: #E0600A; --pax-x: #B4307E; --pax-arr: #73828F;
-  --bag: #0A8F6C; --bag-re: #7A4FD1; --bag-ng: #D42A2A; --bag-ebs: #8496A8; --bag-arr: #9AA6B1;
+  --bag: #0A8F6C; --bag-re: #7A4FD1; --bag-ng: #D42A2A; --bag-ebs: #4C8DB5; --bag-arr: #9AA6B1;
   /* 3D シーン（昼の白い建築模型） */
-  --s-sky: #E4E9ED; --s-ground: #CFD6DC; --s-apron: #D9DFE4; --s-water: #B7CDDC; --s-water2: #A9C2D4; --s-bldg: #F6F6F2; --s-bldg2: #E2E5E6;
-  --s-slab: #FFFFFF; --s-belt: #AEB8C1; --s-machine: #C7CFD6; --s-edge: #8D9AA5; --s-aircraft: #FBFBF8; --s-runway: #B9C1C8; --s-mark: #F7F9FA; --s-road: #C3CAD0; --s-glass: #B5CCDB;
+  --s-sky: #E4E9ED; --s-ground: #CFD6DC; --s-apron: #D9DFE4; --s-water: #A6C4DA; --s-water2: #98B9D2; --s-bldg: #F6F6F2; --s-bldg2: #E2E5E6;
+  --s-slab: #FFFFFF; --s-belt: #97A3AE; --s-machine: #C2CAD1; --s-edge: #7F8D99; --s-aircraft: #FBFBF8; --s-runway: #B9C1C8; --s-mark: #F7F9FA; --s-road: #C3CAD0; --s-glass: #B5CCDB; --s-lofloor: #C4CCD3; --s-lowall: #D6DBDF; --s-lobelt: #7C8A96; --s-lomachine: #A9B4BE;
   --font-jp: "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", system-ui, sans-serif;
-  --font-num: "B612 Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-num: "B612", "BIZ UDPGothic", "Helvetica Neue", Arial, sans-serif;
   --font-sign: "B612", "BIZ UDPGothic", "Hiragino Sans", system-ui, sans-serif;
   --panel-w: 384px;
 }
@@ -23,22 +23,22 @@
   :root:not([data-theme="light"]) {
     --bg: #090E13; --surface: #0F161D; --glass: rgba(13, 19, 26, .84); --ink: #E7EDF2; --ink-2: #A5B3C0; --ink-3: #74838F;
     --line: #2A3641; --line-2: #1C262F; --sign: #FFC629; --sign-ink: #17140A; --plate: #E7EDF2; --plate-ink: #10171E;
-    --good: #3DDC97; --bad: #FF6B63; --focus: #8AB4FF; --base-c: #94A3B1; --ai-c: #FFC629; --grid: #222D37;
+    --good: #3DDC97; --bad: #FF6B63; --focus: #8AB4FF; --base-c: #94A3B1; --ai-c: #FFC629; --grid: #222D37; --lbl-major: #2B3845; --lbl-major-ink: #F1F5F8;
     --pax: #6FA8FF; --pax-q: #FF9A3D; --pax-x: #FF7CC8; --pax-arr: #7F92A3;
-    --bag: #37E0A6; --bag-re: #B79CFF; --bag-ng: #FF5A52; --bag-ebs: #5D7286; --bag-arr: #6F8090;
+    --bag: #37E0A6; --bag-re: #B79CFF; --bag-ng: #FF5A52; --bag-ebs: #4F86AD; --bag-arr: #6F8090;
     --s-sky: #070B10; --s-ground: #0C1218; --s-apron: #10171E; --s-water: #08131C; --s-water2: #0B1A26; --s-bldg: #1A232C; --s-bldg2: #141C24;
-    --s-slab: #1E2831; --s-belt: #2C3945; --s-machine: #33414E; --s-edge: #3D4C59; --s-aircraft: #A9B4BE; --s-runway: #161E26; --s-mark: #5C6B78; --s-road: #131B23; --s-glass: #1E3140;
+    --s-slab: #1E2831; --s-belt: #2C3945; --s-machine: #33414E; --s-edge: #3D4C59; --s-aircraft: #A9B4BE; --s-runway: #161E26; --s-mark: #5C6B78; --s-road: #131B23; --s-glass: #1E3140; --s-lofloor: #0D141B; --s-lowall: #1B2530; --s-lobelt: #46596A; --s-lomachine: #33424F;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #090E13; --surface: #0F161D; --glass: rgba(13, 19, 26, .84); --ink: #E7EDF2; --ink-2: #A5B3C0; --ink-3: #74838F;
   --line: #2A3641; --line-2: #1C262F; --sign: #FFC629; --sign-ink: #17140A; --plate: #E7EDF2; --plate-ink: #10171E;
-  --good: #3DDC97; --bad: #FF6B63; --focus: #8AB4FF; --base-c: #94A3B1; --ai-c: #FFC629; --grid: #222D37;
+  --good: #3DDC97; --bad: #FF6B63; --focus: #8AB4FF; --base-c: #94A3B1; --ai-c: #FFC629; --grid: #222D37; --lbl-major: #2B3845; --lbl-major-ink: #F1F5F8;
   --pax: #6FA8FF; --pax-q: #FF9A3D; --pax-x: #FF7CC8; --pax-arr: #7F92A3;
-  --bag: #37E0A6; --bag-re: #B79CFF; --bag-ng: #FF5A52; --bag-ebs: #5D7286; --bag-arr: #6F8090;
+  --bag: #37E0A6; --bag-re: #B79CFF; --bag-ng: #FF5A52; --bag-ebs: #4F86AD; --bag-arr: #6F8090;
   --s-sky: #070B10; --s-ground: #0C1218; --s-apron: #10171E; --s-water: #08131C; --s-water2: #0B1A26; --s-bldg: #1A232C; --s-bldg2: #141C24;
-  --s-slab: #1E2831; --s-belt: #2C3945; --s-machine: #33414E; --s-edge: #3D4C59; --s-aircraft: #A9B4BE; --s-runway: #161E26; --s-mark: #5C6B78; --s-road: #131B23; --s-glass: #1E3140;
+  --s-slab: #1E2831; --s-belt: #2C3945; --s-machine: #33414E; --s-edge: #3D4C59; --s-aircraft: #A9B4BE; --s-runway: #161E26; --s-mark: #5C6B78; --s-road: #131B23; --s-glass: #1E3140; --s-lofloor: #0D141B; --s-lowall: #1B2530; --s-lobelt: #46596A; --s-lomachine: #33424F;
   color-scheme: dark;
 }
 html, body { height: 100%; }
@@ -46,20 +46,21 @@ body { background: var(--bg); color: var(--ink); font-family: var(--font-jp); fo
 *, *::before, *::after { box-sizing: border-box; }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
-.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
 h1, h2, h3, p { margin: 0; }
 
 #app { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) var(--panel-w); }
 #stageWrap { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--s-sky); }
 #stage { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-#labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+#labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+#topBar, #ticker, #legend, #dock, #caption, #toast { z-index: 2; }
 
 /* ---- 3D ラベル（公共サインの板） ---- */
 .lbl { font-family: var(--font-jp); font-size: 11px; font-weight: 700; line-height: 1.25; color: var(--ink); background: var(--glass); border: 1px solid var(--line);
   padding: 2px 6px 2px; white-space: nowrap; border-radius: 2px; transition: opacity .25s; }
 .lbl small { display: block; font-family: var(--font-num); font-weight: 400; font-size: 10px; color: var(--ink-2); }
-.lbl.major { font-size: 12px; background: var(--plate); color: var(--plate-ink); border-color: var(--plate); }
-.lbl.major small { color: var(--plate-ink); opacity: .78; }
+.lbl.major { font-size: 12px; background: var(--lbl-major); color: var(--lbl-major-ink); border-color: var(--lbl-major); }
+.lbl.major small { color: var(--lbl-major-ink); opacity: .8; }
 .lbl.alert { border-color: var(--pax-q); box-shadow: inset 3px 0 0 var(--pax-q); }
 .lbl.alert small { color: var(--pax-q); font-weight: 700; }
 .lbl.down { border-color: var(--bad); box-shadow: inset 3px 0 0 var(--bad); }
@@ -67,6 +68,8 @@ h1, h2, h3, p { margin: 0; }
 .lbl.rw { background: transparent; border: 0; color: var(--ink-3); font-family: var(--font-sign); letter-spacing: .08em; font-size: 10.5px; }
 .lbl.gate { font-family: var(--font-sign); background: var(--sign); color: var(--sign-ink); border-color: var(--sign); padding: 1px 5px; }
 .lbl.gate small { color: var(--sign-ink); }
+.lbl.track { background: var(--surface); border-color: var(--bag); box-shadow: inset 0 -3px 0 var(--bag); padding-bottom: 5px; }
+.lbl.track::after { content: ""; position: absolute; left: 50%; bottom: -9px; width: 1px; height: 9px; background: var(--bag); }
 
 /* ---- 左上: 識別板と時計 ---- */
 #topBar { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); right: 16px; top: 14px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: start; pointer-events: none; }
@@ -76,11 +79,11 @@ h1, h2, h3, p { margin: 0; }
 #ident .code b { font-size: 21px; letter-spacing: .04em; }
 #ident .code span { font-size: 10px; letter-spacing: .14em; opacity: .75; }
 #ident .ttl { padding: 6px 12px 5px; display: flex; flex-direction: column; justify-content: center; }
-#ident h1 { font-size: 14px; font-weight: 700; letter-spacing: .02em; }
-#ident .sub { font-size: 10.5px; color: var(--ink-2); }
+#ident h1 { font-size: 14px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+#ident .sub { font-size: 10.5px; color: var(--ink-2); white-space: nowrap; }
 #ident .clock { border-left: 1px solid var(--line); padding: 4px 12px 3px; display: flex; flex-direction: column; justify-content: center; }
 #clock { font-size: 24px; font-weight: 700; line-height: 1.1; }
-#ident .clock span { font-size: 10px; color: var(--ink-2); }
+#ident .clock span { font-size: 10px; color: var(--ink-2); white-space: nowrap; }
 
 /* ---- 上中央: 運用モードの切替（誘導路の標識板: 黒地に黄 = 現在地、黄地に黒 = 行き先）---- */
 #modeSwitch { pointer-events: auto; display: flex; background: var(--glass); border: 1px solid var(--line); padding: 3px; gap: 3px;

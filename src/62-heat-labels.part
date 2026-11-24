@@ -19,7 +19,8 @@ function updateHeat(sim, force) {
   if (!HEAT.mesh.visible) return;
   if (!force && (HEAT.tick++ % 5)) return;
   const { nx, nz, cell, grid, acc, tmp, data } = HEAT; acc.fill(0);
-  for (const a of sim.pax) { if (a.lvl || a.z < LAY.ZA) continue; const i = Math.floor((a.x - HEAT.x0) / cell), j = Math.floor((a.z - HEAT.z0) / cell); if (i >= 0 && i < nx && j >= 0 && j < nz) acc[j * nx + i]++; }
+  // 搭乗待ちで着席している旅客は数えない（待ち行列と通行だけを見る）
+  for (const a of sim.pax) { if (a.lvl || a.z < LAY.ZA || a.st === S.LOUNGE) continue; const i = Math.floor((a.x - HEAT.x0) / cell), j = Math.floor((a.z - HEAT.z0) / cell); if (i >= 0 && i < nx && j >= 0 && j < nz) acc[j * nx + i]++; }
   const k = force ? 1 : 0.22;
   for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {            // 3×3 の平滑化
     let s = 0, wsum = 0;
@@ -44,7 +45,8 @@ const gLabels = new THREE.Group(); world3d.add(gLabels);
 function addLabel(html, x, y, z, cls, tier, prio) {
   const el = document.createElement('div'); el.className = 'lbl ' + (cls || ''); el.innerHTML = html;
   for (const s of el.querySelectorAll('[data-live]')) liveEls[s.dataset.live] = { el: s, box: el, text: '' };
-  const o = new CSS2DObject(el); o.position.set(x, y, z); o.center.set(0.5, 1); gLabels.add(o); labels.push({ o, el, tier: tier || 1, lower: y < YU, prio: prio || 0 });
+  const o = new CSS2DObject(el); o.position.set(x, y, z); o.center.set(0.5, 1); gLabels.add(o); const inside = x > LAY.X0 && x < LAY.X1 && z > LAY.ZA - 1 && z < LAY.ZL + 4;
+  labels.push({ o, el, tier: tier === 0 ? 0 : (tier || 1), lower: y < YU, under: y < YU && inside, upper: y >= YU && inside, prio: prio || 0 });
   return o;
 }
 function setLive(key, text, cls) {
@@ -57,10 +59,12 @@ const _lv = new THREE.Vector3(), _kept = [];
 // 距離で出すラベルを絞り、画面上で重なるものは優先度の低い方を隠す
 function updateLabelVisibility() {
   const dist = camera.position.distanceTo(controls.target), narrow = isNarrow.matches, w = wrapEl.clientWidth, h = wrapEl.clientHeight;
-  const t2 = narrow ? 190 : 360, t3 = narrow ? 110 : 210;
+  const t2 = narrow ? 190 : 360, t3 = narrow ? 110 : 210, t1 = narrow ? 330 : 1e9;      // スマホ幅の全景では、検査場のラベルだけを出す
   _kept.length = 0;
-  const cands = labels.filter(L => labelsOn && (L.tier === 1 ? true : L.tier === 2 ? dist < t2 : L.tier === 3 ? dist < t3 : dist > 260));
-  const lowFirst = upperGhostTarget > 0.5;        // 上階を透かしているときは下階のラベルを優先する
+  const ghost = upperGhostTarget > 0.5;
+  // 上階を透かしているときは上階のラベルを隠し、通常は床の下にある細かいラベルを隠す
+  const cands = labels.filter(L => labelsOn && !(ghost ? L.upper : (L.under && (L.tier > 1 || dist < 300))) && (L.tier === 0 ? false : L.tier === 1 ? (dist < t1 || L.prio >= 2) : L.tier === 2 ? dist < t2 : L.tier === 3 ? dist < t3 : dist > 260));
+  const lowFirst = ghost;                         // 上階を透かしているときは下階のラベルを優先する
   cands.sort((a, b) => (a.tier - b.tier) || (b.prio - a.prio) || ((a.lower === lowFirst ? 0 : 1) - (b.lower === lowFirst ? 0 : 1)) || ((b.o.visible ? 1 : 0) - (a.o.visible ? 1 : 0)));
   for (const L of labels) L.want = false;
   for (const L of cands) {
@@ -71,7 +75,7 @@ function updateLabelVisibility() {
     let hit = false; for (const k of _kept) if (x0 < k[2] && x0 + bw > k[0] && y0 < k[3] && y0 + bh > k[1]) { hit = true; break; }
     if (hit) continue; _kept.push([x0, y0, x0 + bw, y0 + bh]); L.want = true;
   }
-  for (const L of labels) if (L.o.visible !== L.want) L.o.visible = L.want;
+  for (const L of labels) if (L.tier > 0 && L.o.visible !== L.want) L.o.visible = L.want;
 }
 function updateLiveLabels(sim, world) {
   const t = sim.t;
@@ -93,4 +97,43 @@ function updateLiveLabels(sim, world) {
     if (best && best.dep - t < 150) { const fs = sim.flightState(best.id); txt = `${best.code} ${hhmm(best.dep)}` + (t >= best.dep - P.boardStart ? `・搭乗 ${fs.boarded}/${best.paxOut}` : ''); }
     setLive('gate' + gi, txt);
   }
+}
+
+// ---- 手荷物 1 個の追跡（RFID のタグ番号で、預け入れから搭載までを追う）----
+// タグは 10 桁（先頭 1 桁 + 航空会社コード 3 桁 + 連番 6 桁）。999 は架空の航空会社コード
+let trackBag = null, trackObj = null, trackL = null, trackUid = -1, trackText = '';
+const tagNo = uid => '0999' + String(uid % 1000000).padStart(6, '0');
+function bagStatus(b, sim) {
+  switch (b.st) {
+    case B.MOVE: return b.next === NEXT.EDS_Q ? 'コレクターを搬送中' : b.next === NEXT.LAT_IN ? `ラテラル ${b.lat + 1} へ搬送中` : b.next === NEXT.EBS_IN ? 'EBS へ搬送中' : b.next === NEXT.HOLD_IN ? '仮置き場へ搬送中' : '搬送中';
+    case B.EDS_Q: return sim.scn.edsDown === b.line ? `EDS ${b.line + 1} 号機の停止で滞留中` : `EDS ${b.line + 1} 号機の検査待ち`;
+    case B.L2: return 'EDS の画像判定中';
+    case B.IND_Q: return 'ソーターへの投入待ち';
+    case B.LOOP: return b.dest === D.NONE ? 'ソーターを再循環中' : b.dest === D.LAT ? `ソーター上（行き先: ラテラル ${b.lat + 1}）` : b.dest === D.EBS ? 'ソーター上（行き先: EBS）' : b.dest === D.MES ? 'タグの読取不良（行き先: 手作業コード入力）' : 'ソーター上（行き先: 仮置き場）';
+    case B.MES_Q: case B.MES: return '手作業でコードを入力中';
+    case B.EBS: return 'EBS で保管中';
+    case B.HOLD: return '仮置き場で保管中';
+    case B.LAT: return `ラテラル ${b.lat + 1} で積み付け待ち`;
+    case B.TRAIN: return 'ドーリーで機側へ移動中';
+  }
+  return '';
+}
+function updateTrack(sim) {
+  if (!trackObj) { trackObj = addLabel('<span class="num" id="trkTag"></span><small id="trkSt"></small>', 0, 0, 0, 'track', 0); trackObj.center.set(0.5, 1.25); trackL = labels[labels.length - 1]; }
+  const L = trackL;                          // 追跡ラベルは重なり判定の対象から外す（tier 0）
+  if (trackBag && (trackBag.st === B.GONE || trackBag.sim !== sim)) {
+    const uid = trackBag.st === B.GONE ? -1 : trackUid; trackBag = null;
+    if (uid >= 0) for (const b of sim.bags) if (b.uid === uid) { trackBag = b; break; }       // モードを切り替えたら、同じタグの手荷物をもう一方の世界で探す
+  }
+  if (!trackBag) {                           // 預け入れ直後の手荷物から 1 個選ぶ
+    let pick = null; for (const b of sim.bags) if (b.uid !== undefined && b.st === B.MOVE && b.next === NEXT.EDS_Q && b.f.dep - sim.t > 50) { pick = b; if ((b.uid % 7) === 3) break; }
+    if (!pick) for (const b of sim.bags) if (b.uid !== undefined && b.st === B.LOOP && !b.missed) { pick = b; break; }
+    trackBag = pick; if (pick) { trackUid = pick.uid; trackText = ''; }
+  }
+  // 全景では出さない（床の下の 1 個を指しても分かりにくいため）。近づくか、上階を透かしたときに出す
+  const b = trackBag; trackObj.visible = !!b && labelsOn && (upperGhostTarget > 0.5 || camera.position.distanceTo(controls.target) < (isNarrow.matches ? 200 : 320));
+  if (!b) return;
+  b.sim = sim; trackObj.position.set(b.x, b.y + 0.6, b.z);
+  const txt = `${b.f.code} 便（${hhmm(b.f.dep)} 発）・${b.missed ? '出発に間に合わず、次の便へ振替' : bagStatus(b, sim)}`;
+  if (txt !== trackText) { trackText = txt; L.el.querySelector('#trkTag').textContent = 'タグ ' + tagNo(b.uid); L.el.querySelector('#trkSt').textContent = txt; }
 }

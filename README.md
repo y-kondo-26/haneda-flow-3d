@@ -19,3 +19,5 @@
 
 - `haneda-flow.html`: Artifact 用の本文（doctype・head を含まない）
 - `docs/index.html`: GitHub Pages で配信する完全な HTML
+
+`./check.sh` はビルドしたあと、モジュールスクリプトを `node --check` で構文確認します。`test/` にはシミュレーションを node で動かす確認用スクリプトがあります。

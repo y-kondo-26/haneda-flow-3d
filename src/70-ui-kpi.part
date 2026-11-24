@@ -1,7 +1,7 @@
 // =====================================================================
 // 70 ui (指標・グラフ) : 2 つのシミュレーションの実測値を並べ、差を出す
 // =====================================================================
-const SEED = 20261124, START_AT = 6 * 60 + 40;      // 最初に見せる時刻（朝の出発ピーク）
+const SEED = 20261124, START_AT = 17 * 60 + 8;     // 最初に見せる時刻（夕方の出発ピーク。05:00 からここまでを起動時に計算する）
 let world, sims, active = 1, speed = 1, playing = true, win60 = false;
 const fmt = (v, dec) => v.toLocaleString('ja-JP', { minimumFractionDigits: dec, maximumFractionDigits: dec });
 const KPI_ROWS = [
@@ -50,11 +50,14 @@ function setupCanvas(cv) {
 function chartFrame(cv, ymax, unit) {
   const { g, w, h } = setupCanvas(cv), L = 30, R = 8, T = 6, Bm = 16, pw = w - L - R, ph = h - T - Bm;
   const X = t => L + (t - DAY0) / (DAY1 - DAY0) * pw, Y = v => T + ph - Math.min(1, v / ymax) * ph;
-  g.font = '10px "B612 Mono", ui-monospace, Menlo, monospace'; g.textBaseline = 'middle';
+  g.font = '10px "B612", "Helvetica Neue", Arial, sans-serif'; g.textBaseline = 'middle';
   g.strokeStyle = TH.css['grid']; g.fillStyle = TH.css['ink-3']; g.lineWidth = 1;
   for (let i = 0; i <= 2; i++) { const v = ymax * i / 2, y = Math.round(Y(v)) + 0.5; g.beginPath(); g.moveTo(L, y); g.lineTo(w - R, y); g.stroke(); g.textAlign = 'right'; g.fillText(fmt(v, ymax < 4 ? 1 : 0), L - 4, y); }
   g.textAlign = 'center'; g.textBaseline = 'alphabetic';
-  for (let hh = 6; hh <= 24; hh += 3) { const x = Math.round(X(hh * 60)) + 0.5; g.beginPath(); g.moveTo(x, T + ph); g.lineTo(x, T + ph + 3); g.stroke(); g.fillText(String(hh).padStart(2, '0') + ':00', Math.min(x, w - R - 14), h - 2); }
+  for (let hh = 6; hh <= 24; hh += 3) {
+    const x = Math.round(X(hh * 60)) + 0.5; g.beginPath(); g.moveTo(x, T + ph); g.lineTo(x, T + ph + 3); g.stroke();
+    if (hh % 6 === 0 || pw > 420) { g.textAlign = hh === 24 ? 'right' : 'center'; g.fillText(String(hh).padStart(2, '0') + ':00', hh === 24 ? w - R + 6 : x, h - 2); }
+  }
   return { g, w, h, X, Y, L, R, T, ph, pw };
 }
 function nowLine(f, t) { const { g, X, T, ph } = f, x = Math.round(X(t)) + 0.5; g.strokeStyle = TH.css['ink']; g.lineWidth = 1; g.beginPath(); g.moveTo(x, T); g.lineTo(x, T + ph); g.stroke(); }

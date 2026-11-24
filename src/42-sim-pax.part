@@ -20,7 +20,7 @@ class Sim {
     this.pax = []; this.paxPtr = 0;
     this.isl = LAY.islands.map(() => ({ q: [], free: new Float64Array(LAY.dropsPerIsland) }));
     this.cp = LAY.cps.map(() => ({ q: [], free: new Float64Array(LAY.cpLanes), open: 1, target: 1, plan: [], limit: 99, limitUntil: 0,
-      enroute: 0, lastReq: -99, calmSince: 0, extra: 0, served: 0, waitEma: 0 }));
+      enroute: 0, lastReq: -99, lastCall: -99, calmSince: 0, extra: 0, served: 0, waitEma: 0 }));
     this.imm = LAY.cps.map(() => ({ q: [], free: new Float64Array(LAY.immGates) }));
     this.fs = [];                      // 便ごとの状態（搭乗・手荷物）
     this.log = []; this.nextCtl = DAY0; this.scn = { edsDown: -1, edsUntil: 0, edsSwitchAt: 0 };

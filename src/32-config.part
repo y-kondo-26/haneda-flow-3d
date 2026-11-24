@@ -36,7 +36,7 @@ const BHS = {
   lateralX: Array.from({ length: 12 }, (_, k) => 77 - 14 * k),
   zLat0: 15, zLat1: 3,           // シュート下端〜ラテラル末端
   zTrain: -5,
-  ebs: { x0: -162, x1: -112, z0: 8, z1: 44, cols: 14, rows: 11, levels: 4 },
+  ebs: { x0: -162, x1: -112, z0: 8, z1: 44, cols: 14, rows: 11, levels: 5 },
   mes: { x: 116, z: 26 },
   hold: { x0: 108, x1: 150, z0: 0, z1: 12 },     // 従来運用の手作業仮置き
   zRoad: -25,
@@ -80,14 +80,14 @@ const P = {
   latCap: 36,              // ラテラル 1 本に滞留できる個数
   loadRate: 7,             // メイクアップの積み付け（個/分）
   trainCap: 120,           // ドーリー 4 台の合計
-  tugs: 8,
+  tugs: 12,
   roster: [0.9, 0],         // 従来運用の人員計画: レーン数 = ceil(1 時間の到着見込み × 処理時間 × 係数 + 上乗せ)
   acLoadRate: 12,          // 機側での搭載（個/分）
   holdClose: 8,            // 貨物室を閉める時刻（出発の何分前）
   bagDropClose: 45,        // 預け入れ締切（出発の何分前）
   gateClose: 10, boardStart: 32, boardRate: 14,
-  base: { latOpen: 120, train1: 52, final: 25, holdAfterLaps: 3, holdMis: 0.012, edsSwitch: 8 },
-  ai: { ebsRelease: 80, comply: 0.6, complyFault: 0.78, margin: 1.2 },
+  base: { latOpen: 120, train1: 52, final: 25, holdAfterLaps: 3, holdMis: 0.012, edsSwitch: 10, edsOverflow: 60 },
+  ai: { ebsRelease: 80, comply: 0.55, complyFault: 0.78, margin: 1.0, extraLanes: 1, edsDetect: 1.5 },
 };
 
-const hhmm = m => { m = Math.max(0, Math.round(m)); return String(Math.floor(m / 60) % 24).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+const hhmm = m => { m = Math.max(0, Math.round(m)); const h = Math.floor(m / 60); return String(h > 24 ? h % 24 : h).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };

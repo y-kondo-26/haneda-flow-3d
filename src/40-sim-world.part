@@ -24,7 +24,7 @@ function makeFlight(world, gate, arr, dep, opt = {}) {
     island: clamp(Math.round(gate * 5 / 7 + (r() * 2.4 - 1.2)), 0, 5),
     lateralFix: gate === 8 ? 11 : gate + Math.floor(gate / 2),   // 固定割当（12 本のうち 8 本を使う。臨時便は 12 番）
     xb: [],
-    extra: !!opt.extra, nLocal: 0, nBags: 0, fcErr: 0.9 + 0.2 * r(),
+    extra: !!opt.extra, nLocal: 0, nBags: 0, fcErr: 0.76 + 0.48 * r(), fcShift: (r() * 2 - 1) * 14,   // 予測の誤差: 人数 ±24%、来港の時刻 ±14 分
   };
   world.flights.push(f);
   // ---- 出発旅客 ----
@@ -84,9 +84,9 @@ function buildForecast(world) {
   world.fcTotal = new Float32Array(FC_N);
   const n = world.leadSamples.length;
   for (const f of world.flights) {
-    const exp = f.paxOut * 0.85 * f.fcErr / n;       // ローカル旅客の見込み（±10% の誤差つき）
+    const exp = f.paxOut * 0.85 * f.fcErr / n;       // ローカル旅客の見込み（便ごとの誤差つき）
     for (const lead of world.leadSamples) {
-      const b = Math.floor((Math.max(DAY0 + 1, f.dep - lead) - DAY0) / FC_BIN);
+      const b = Math.floor((Math.max(DAY0 + 1, f.dep - lead + f.fcShift) - DAY0) / FC_BIN);
       if (b >= 0 && b < FC_N) { fc[f.island][b] += exp; world.fcTotal[b] += exp; }
     }
   }

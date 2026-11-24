@@ -11,7 +11,7 @@
     </header>
     <div id="modeSwitch" role="radiogroup" aria-label="表示する運用モード">
       <button id="modeBase" type="button" role="radio" aria-checked="false">従来運用<small>固定の計画と事後の対応</small></button>
-      <button id="modeAi" type="button" role="radio" aria-checked="true">AI 最適化<small>予測して先に動かす</small></button>
+      <button id="modeAi" type="button" role="radio" aria-checked="true">AI 最適化<small>予測して先に手配する</small></button>
     </div>
     </div>
     <div id="ticker" hidden><span id="tickKind"></span><time id="tickTime" class="num"></time><p id="tickText"></p></div>
@@ -52,7 +52,7 @@
         <button class="chip num" type="button" id="spd2" data-spd="2" aria-pressed="false">2 分</button>
         <button class="chip num" type="button" id="spd4" data-spd="4" aria-pressed="false">4 分</button>
         <span class="sep"></span>
-        <button class="chip" type="button" id="btnRestart">05:00 から</button>
+        <button class="chip" type="button" id="btnRestart">05:00 からやり直す</button>
       </div>
       <div id="dockSlot">
         <div id="ctlBars">
@@ -72,7 +72,7 @@
         </div>
       </div>
     </div>
-    <div id="boot">シミュレーションを朝の出発ピークまで進めています…</div>
+    <div id="boot"><div><p id="bootMsg">3D ライブラリを読み込んでいます</p><div id="bootTrack"><i id="bootBar"></i></div></div></div>
   </div>
 
   <aside id="panel" data-tab="kpi" aria-label="運用の指標">
@@ -105,12 +105,12 @@
         <ul id="fids" hidden></ul>
       </section>
       <section class="sec" id="secCtl"><div id="sheetSlot"></div></section>
-      <p id="note">シミュレーションの値は架空の設定に基づくもので、羽田空港の実際のレイアウト・運用データではありません。便名・ゲート・施設の配置は構想図として作ったものです。歩行と搬送の速さは、表示のために実際より遅くしています。</p>
     </div>
+    <p id="note">シミュレーションの値は架空の設定に基づくもので、羽田空港の実際のレイアウト・運用データではありません。<span>便名・ゲート・施設の配置は構想図です。歩行と搬送の速さは、表示のために実際より遅くしています。</span></p>
   </aside>
 </div>
 <script>
 // three.js を読み込めなかった場合に、起動中の表示のまま止まらないようにする
-window.addEventListener('error', function (e) { var b = document.getElementById('boot'); if (b && !b.hidden) b.textContent = '表示の準備中にエラーが起きました: ' + (e.message || '不明なエラー'); });
-setTimeout(function () { var b = document.getElementById('boot'); if (b && !b.hidden && b.textContent.indexOf('エラー') < 0 && b.textContent.indexOf('失敗') < 0) b.textContent = '3D ライブラリ（three.js）を読み込めていません。ネットワークを確認して、ページを読み込み直してください。'; }, 15000);
+window.addEventListener('error', function (e) { var b = document.getElementById('boot'), m = document.getElementById('bootMsg'); if (b && !b.hidden) m.textContent = '表示の準備中にエラーが起きました: ' + (e.message || '不明なエラー'); });
+setTimeout(function () { var b = document.getElementById('boot'), m = document.getElementById('bootMsg'); if (b && !b.hidden && m.textContent.indexOf('読み込んでいます') >= 0) m.textContent = '3D ライブラリ（three.js）を読み込めていません。ネットワークを確認して、ページを読み込み直してください。'; }, 15000);
 </script>

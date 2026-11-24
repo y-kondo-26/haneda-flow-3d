@@ -1,7 +1,11 @@
 // =====================================================================
 // 54 scene (ターミナル上階) : 屋根を外したカットアウェイ。出発ロビー → 保安検査 → 出国審査 → コンコース → ゲート
 // =====================================================================
-const mSlab = M('s-slab', { transparent: true, opacity: 0.6, depthWrite: false, side: THREE.DoubleSide });
+// 床スラブ: すりガラスの床に目地を入れる（床として読めて、下階の流れも透ける）
+const slabTex = canvasTex(256, 256, (g, w) => { g.clearRect(0, 0, w, w); g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillRect(0, 0, w, w); g.strokeStyle = 'rgba(255,255,255,1)'; g.lineWidth = 4; g.strokeRect(0, 0, w, w); g.lineWidth = 1.5; g.beginPath(); g.moveTo(w / 2, 0); g.lineTo(w / 2, w); g.moveTo(0, w / 2); g.lineTo(w, w / 2); g.stroke(); });
+slabTex.wrapS = slabTex.wrapT = THREE.RepeatWrapping; slabTex.repeat.set(43, 12.25); slabTex.anisotropy = 4;
+const mSlab = M('s-slab', { map: slabTex, transparent: true, opacity: 1, depthWrite: false });
+const gRoof = new THREE.Group(); gUpper.add(gRoof);
 const mUp = M('s-bldg', { transparent: true }), mUp2 = M('s-bldg2', { transparent: true }), mUpEdge = M('s-edge', { transparent: true }), mUpMachine = M('s-machine', { transparent: true });
 const mUpGlass = M('s-glass', { transparent: true, opacity: 0.4, depthWrite: false });
 const mRoof = M('s-edge', { transparent: true, opacity: 0.55 });
@@ -12,7 +16,8 @@ let laneLights = null;
 function buildUpper() {
   const { X0, X1, ZA, ZL } = LAY, W = X1 - X0, Dp = ZL - ZA, cx = 0, cz = (ZA + ZL) / 2;
   // 床スラブ（半透明。下階の手荷物の流れが透けて見える）
-  const slab = new THREE.Mesh(new THREE.BoxGeometry(W, 0.5, Dp).translate(cx, YU - 0.27, cz), mSlab); slab.renderOrder = 2; slab.receiveShadow = true; gUpper.add(slab);
+  const slab = new THREE.Mesh(new THREE.PlaneGeometry(W, Dp).rotateX(-Math.PI / 2).translate(cx, YU - 0.02, cz), mSlab); slab.renderOrder = 2; slab.receiveShadow = true; gUpper.add(slab);
+  box(mUpEdge, W, 0.5, 0.3, cx, YU - 0.25, ZL); box(mUpEdge, W, 0.5, 0.3, cx, YU - 0.25, ZA); box(mUpEdge, 0.3, 0.5, Dp, X0, YU - 0.25, cz); box(mUpEdge, 0.3, 0.5, Dp, X1, YU - 0.25, cz);   // スラブの小口
   // 外周の腰壁とランドサイドのガラス面
   box(mUp, W, 2.2, 0.8, cx, YU + 1.1, ZL); box(mUp, 0.8, 2.2, Dp, X0, YU + 1.1, cz); box(mUp, 0.8, 2.2, Dp - 30, X1, YU + 1.1, cz - 15 + 2);
   box(mUpGlass, W, 9, 0.3, cx, YU + 6.6, ZL + 0.2); box(mUpGlass, W, 4.4, 0.3, cx, YU + 2.2, ZA);
@@ -23,8 +28,10 @@ function buildUpper() {
     else { box(mUp, 16, 0.6, 9, d.x, YU + 4.4, ZL + 4.6); box(mUpEdge, 0.5, 4.6, 0.5, d.x - 7.5, YU + 2.2, ZL + 8.6); box(mUpEdge, 0.5, 4.6, 0.5, d.x + 7.5, YU + 2.2, ZL + 8.6); }
   }
   // 大屋根は骨組みだけを残す
-  for (let x = X0 + 14; x < X1; x += 43) { box(mRoof, 0.9, 0.9, Dp + 16, x, YU + 19, cz + 4); box(mRoof, 0.7, 7, 0.7, x, YU + 15.5, ZL + 0.2); box(mRoof, 0.7, 14.5, 0.7, x, YU + 11.7, ZA); }
-  box(mRoof, W, 0.7, 0.7, cx, YU + 19, ZL + 12); box(mRoof, W, 0.7, 0.7, cx, YU + 19, ZA - 4); box(mRoof, W, 0.5, 0.5, cx, YU + 19, cz);
+  flush(gUpper, { cast: true, receive: true, order: 1 });
+  for (let x = X0 + 14; x < X1; x += 43) { box(mRoof, 0.45, 0.6, Dp + 16, x, YU + 19, cz + 4); box(mRoof, 0.45, 7, 0.45, x, YU + 15.5, ZL + 0.2); box(mRoof, 0.45, 14.5, 0.45, x, YU + 11.7, ZA); }
+  box(mRoof, W, 0.5, 0.45, cx, YU + 19, ZL + 12); box(mRoof, W, 0.5, 0.45, cx, YU + 19, ZA - 4);
+  for (const m of flush(gRoof, { cast: false, receive: false, order: 3 })) m.renderOrder = 3;
   // チェックイン島と自動手荷物預け機
   LAY.islands.forEach((is, i) => {
     const len = is.z1 - is.z0;
@@ -35,7 +42,7 @@ function buildUpper() {
   });
   addLabel('出発ロビー<small>自動手荷物預け機 60 台</small>', -150, YU + 9, 76, 'major', 1);
   // ランドサイドとエアサイドを分ける壁と、保安検査場（スマートレーン 6 本 × 3 か所）
-  const gaps = LAY.cps.map(c => [c.x - 14.4, c.x + 14.4]); let px = X0;
+  const gaps = LAY.cps.map(c => [c.x - 14.4, c.x + 14.4]); let px = X0 + 8.5;       // 西端の 8.5 は到着旅客の通路
   for (const [a, b] of gaps.concat([[X1, X1]])) { if (a > px) box(mUp, a - px, 3.4, 0.6, (a + px) / 2, YU + 1.7, 34); px = b; }
   LAY.cps.forEach((cp, c) => {
     for (let l = 0; l < LAY.cpLanes; l++) {
@@ -53,7 +60,7 @@ function buildUpper() {
     box(mUp, 2.6 * 7 + 2, 0.3, 3.4, cp.x - 0.4, YU + 3.3, LAY.zImm); box(mUpEdge, 0.3, 3.2, 0.3, cp.x - 10, YU + 1.6, LAY.zImm); box(mUpEdge, 0.3, 3.2, 0.3, cp.x + 9.2, YU + 1.6, LAY.zImm);
     addLabel(`出国審査 <span class="num">${cp.name}</span><small>顔認証ゲート ${LAY.immGates} 台</small>`, cp.x + 17, YU + 5.5, LAY.zImm, '', 2);
   });
-  px = X0;
+  px = X0 + 8.5;
   for (const [a, b] of LAY.cps.map(c => [c.x - 10.2, c.x + 9.4]).concat([[X1, X1]])) { if (a > px) box(mUp, a - px, 3.0, 0.5, (a + px) / 2, YU + 1.5, LAY.zImm - 1.6); px = b; }
   // コンコース: ゲートラウンジの椅子・ゲートカウンター
   LAY.gates.forEach((g, gi) => {
@@ -65,7 +72,7 @@ function buildUpper() {
   for (let x = X0 + 40; x < X1 - 20; x += 80) box(mUp2, 30, 0.12, 2.6, x, YU + 0.07, 6.4);                 // 動く歩道
   addLabel('制限エリア コンコース', -40, YU + 6, 4, '', 3);
   // 到着旅客の通路（西端）と下階への階段
-  addGeo(mUp2, new THREE.BoxGeometry(3.8, 0.3, 14.5).rotateX(0.983).translate(-168, YU / 2, 62)); box(mUpEdge, 0.3, 1.2, 80, -170.2, YU + 0.6, 22);
+  addGeo(mUp2, new THREE.BoxGeometry(3.8, 0.3, 14.5).rotateX(0.983).translate(-168, YU / 2, 62)); box(mUpEdge, 0.25, 1.2, 70, X0 + 8.5, YU + 0.6, 23);
   addLabel('到着通路', -168, YU + 4.5, 20, '', 3);
   const meshes = flush(gUpper, { cast: true, receive: true, order: 1 });
   for (const m of meshes) if (m.material === mUpGlass || m.material === mRoof) m.renderOrder = 3;
@@ -80,7 +87,7 @@ function buildUpper() {
 // 「上階を透かす」: 上階の造作と旅客を薄くして、下階の手荷物ホールを見せる
 let upperGhost = 0, upperGhostTarget = 0;
 function setUpperOpacity(k) {     // k: 0 = 通常、1 = 透かす
-  mSlab.opacity = lerp(TH.dark ? 0.5 : 0.62, 0.07, k);
+  mSlab.opacity = lerp(TH.dark ? 0.9 : 1, 0.14, k);
   for (const m of upperMats) { m.opacity = lerp(1, 0.13, k); m.depthWrite = k < 0.5; }
   mUpGlass.opacity = lerp(0.4, 0.06, k); mRoof.opacity = lerp(0.55, 0.08, k);
 }

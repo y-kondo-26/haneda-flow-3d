@@ -25,7 +25,7 @@ sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.6; sun.shadow.radius = 3.5;
 scene.add(hemi, sun, sun.target);
 
 // ---- テーマ: CSS のトークンを唯一の色の定義にして、3D の材質へ写す ----
-const TOKENS = ['s-sky', 's-ground', 's-apron', 's-water', 's-water2', 's-bldg', 's-bldg2', 's-slab', 's-belt', 's-machine', 's-edge', 's-aircraft', 's-runway', 's-mark', 's-road', 's-glass',
+const TOKENS = ['s-sky', 's-ground', 's-apron', 's-water', 's-water2', 's-bldg', 's-bldg2', 's-slab', 's-belt', 's-machine', 's-edge', 's-aircraft', 's-runway', 's-mark', 's-road', 's-glass', 's-lofloor', 's-lowall', 's-lobelt', 's-lomachine',
   'pax', 'pax-q', 'pax-x', 'pax-arr', 'bag', 'bag-re', 'bag-ng', 'bag-ebs', 'bag-arr', 'sign', 'ink', 'ink-2', 'ink-3', 'grid', 'base-c', 'ai-c', 'line', 'bad', 'good'];
 const TH = { dark: false, c: {}, css: {} };
 const themed = [];

@@ -9,7 +9,7 @@ const ebsCell = (i, out) => {
   return out;
 };
 const holdSlot = (i, out) => { const h = BHS.hold; out.x = h.x0 + 2 + (i % 20) * 1.9; out.z = h.z0 + 1.5 + (Math.floor(i / 20) % 6) * 1.7; return out; };
-const latSlot = (k, i, out) => { out.x = BHS.lateralX[k] + ((i % 3) - 1) * 0.9; out.z = BHS.zLat1 + Math.floor(i / 3) * 0.95; return out; };
+const latSlot = (k, i, out) => { out.x = BHS.lateralX[k] + ((i % 3) - 1) * 1.14; out.z = BHS.zLat1 - 0.8 + Math.floor(i / 3) * 1.06; return out; };
 const _c = { x: 0, y: 0, z: 0 };
 
 Sim.prototype.induct = function (b, u) {
@@ -70,7 +70,7 @@ Sim.prototype.stepBags = function (dt) {
     const b = m.q.shift(), start = b.tS <= m.free[k] ? Math.max(m.free[k], t - dt) : t;
     m.free[k] = b.tEnd = start + P.mesSvc; b.st = B.MES; b.x = BHS.mes.x; b.z = BHS.mes.z + (k ? 2.2 : -2.2);
   }
-  for (let i = 0; i < m.q.length; i++) { const b = m.q[i]; b.x = BHS.mes.x - 3 - (i % 9) * 0.95; b.z = BHS.mes.z - 1 + Math.floor(i / 9) * 0.95; }
+  for (let i = 0; i < m.q.length; i++) { const b = m.q[i]; b.x = BHS.mes.x - 3 - (i % 8) * 1.38; b.z = BHS.mes.z - 1.1 + Math.floor(i / 8) * 1.1; }
   for (let i = arr.length - 1; i >= 0; i--) {
     const b = arr[i];
     switch (b.st) {

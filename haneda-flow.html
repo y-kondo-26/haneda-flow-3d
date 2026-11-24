@@ -1,0 +1,2298 @@
+<title>羽田フローツイン</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=B612:wght@400;700&family=BIZ+UDPGothic:wght@400;700&display=swap">
+<style>
+/* レイアウト: 左に 3D の舞台（建築模型 / 夜のターミナル）、右に運用管制の計器盤。舞台の上には誘導路の標識板を模した切替と操作だけを置く */
+:root {
+  /* UI */
+  --bg: #E6EAED; --surface: #F7F9FA; --glass: rgba(247, 249, 250, .86); --ink: #17212B; --ink-2: #4D5C69; --ink-3: #7F8D99;
+  --line: #C6CFD7; --line-2: #DCE2E7; --sign: #F2B600; --sign-ink: #1B1A12; --plate: #1D262E; --plate-ink: #F4F6F7;
+  --good: #0A7650; --bad: #BF2A2A; --focus: #0B57D0; --base-c: #66737F; --ai-c: #B88A00; --grid: #D5DCE2; --lbl-major: #1D262E; --lbl-major-ink: #F4F6F7;
+  /* 流れの色（3D・凡例・ラベルで共通） */
+  --pax: #2458C5; --pax-q: #E0600A; --pax-x: #B4307E; --pax-arr: #73828F;
+  --bag: #0A8F6C; --bag-re: #7A4FD1; --bag-ng: #D42A2A; --bag-ebs: #4C8DB5; --bag-arr: #9AA6B1;
+  /* 3D シーン（昼の白い建築模型） */
+  --s-sky: #E4E9ED; --s-ground: #CFD6DC; --s-apron: #D9DFE4; --s-water: #A6C4DA; --s-water2: #98B9D2; --s-bldg: #F6F6F2; --s-bldg2: #E2E5E6;
+  --s-slab: #FFFFFF; --s-belt: #97A3AE; --s-machine: #C2CAD1; --s-edge: #7F8D99; --s-aircraft: #FBFBF8; --s-runway: #B9C1C8; --s-mark: #F7F9FA; --s-road: #C3CAD0; --s-glass: #B5CCDB; --s-lofloor: #C4CCD3; --s-lowall: #D6DBDF; --s-lobelt: #7C8A96; --s-lomachine: #A9B4BE;
+  --font-jp: "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic UI", "Noto Sans JP", system-ui, sans-serif;
+  --font-num: "B612", "BIZ UDPGothic", "Helvetica Neue", Arial, sans-serif;
+  --font-sign: "B612", "BIZ UDPGothic", "Hiragino Sans", system-ui, sans-serif;
+  --panel-w: 384px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #090E13; --surface: #0F161D; --glass: rgba(13, 19, 26, .84); --ink: #E7EDF2; --ink-2: #A5B3C0; --ink-3: #74838F;
+    --line: #2A3641; --line-2: #1C262F; --sign: #FFC629; --sign-ink: #17140A; --plate: #E7EDF2; --plate-ink: #10171E;
+    --good: #3DDC97; --bad: #FF6B63; --focus: #8AB4FF; --base-c: #94A3B1; --ai-c: #FFC629; --grid: #222D37; --lbl-major: #2B3845; --lbl-major-ink: #F1F5F8;
+    --pax: #6FA8FF; --pax-q: #FF9A3D; --pax-x: #FF7CC8; --pax-arr: #7F92A3;
+    --bag: #37E0A6; --bag-re: #B79CFF; --bag-ng: #FF5A52; --bag-ebs: #4F86AD; --bag-arr: #6F8090;
+    --s-sky: #070B10; --s-ground: #0C1218; --s-apron: #10171E; --s-water: #08131C; --s-water2: #0B1A26; --s-bldg: #1A232C; --s-bldg2: #141C24;
+    --s-slab: #1E2831; --s-belt: #2C3945; --s-machine: #33414E; --s-edge: #3D4C59; --s-aircraft: #A9B4BE; --s-runway: #161E26; --s-mark: #5C6B78; --s-road: #131B23; --s-glass: #1E3140; --s-lofloor: #0D141B; --s-lowall: #1B2530; --s-lobelt: #46596A; --s-lomachine: #33424F;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #090E13; --surface: #0F161D; --glass: rgba(13, 19, 26, .84); --ink: #E7EDF2; --ink-2: #A5B3C0; --ink-3: #74838F;
+  --line: #2A3641; --line-2: #1C262F; --sign: #FFC629; --sign-ink: #17140A; --plate: #E7EDF2; --plate-ink: #10171E;
+  --good: #3DDC97; --bad: #FF6B63; --focus: #8AB4FF; --base-c: #94A3B1; --ai-c: #FFC629; --grid: #222D37; --lbl-major: #2B3845; --lbl-major-ink: #F1F5F8;
+  --pax: #6FA8FF; --pax-q: #FF9A3D; --pax-x: #FF7CC8; --pax-arr: #7F92A3;
+  --bag: #37E0A6; --bag-re: #B79CFF; --bag-ng: #FF5A52; --bag-ebs: #4F86AD; --bag-arr: #6F8090;
+  --s-sky: #070B10; --s-ground: #0C1218; --s-apron: #10171E; --s-water: #08131C; --s-water2: #0B1A26; --s-bldg: #1A232C; --s-bldg2: #141C24;
+  --s-slab: #1E2831; --s-belt: #2C3945; --s-machine: #33414E; --s-edge: #3D4C59; --s-aircraft: #A9B4BE; --s-runway: #161E26; --s-mark: #5C6B78; --s-road: #131B23; --s-glass: #1E3140; --s-lofloor: #0D141B; --s-lowall: #1B2530; --s-lobelt: #46596A; --s-lomachine: #33424F;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-jp); font-size: 13px; line-height: 1.5; overflow: hidden; -webkit-font-smoothing: antialiased; }
+*, *::before, *::after { box-sizing: border-box; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 2px; }
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+h1, h2, h3, p { margin: 0; }
+
+#app { height: 100%; display: grid; grid-template-columns: minmax(0, 1fr) var(--panel-w); }
+#stageWrap { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--s-sky); }
+#stage { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+#labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+#topBar, #ticker, #legend, #dock, #caption, #toast { z-index: 2; }
+
+/* ---- 3D ラベル（公共サインの板） ---- */
+.lbl { font-family: var(--font-jp); font-size: 11px; font-weight: 700; line-height: 1.25; color: var(--ink); background: var(--glass); border: 1px solid var(--line);
+  padding: 2px 6px 2px; white-space: nowrap; border-radius: 2px; transition: opacity .25s; }
+.lbl small { display: block; font-family: var(--font-num); font-weight: 400; font-size: 10px; color: var(--ink-2); }
+.lbl.major { font-size: 12px; background: var(--lbl-major); color: var(--lbl-major-ink); border-color: var(--lbl-major); }
+.lbl.major small { color: var(--lbl-major-ink); opacity: .8; }
+.lbl.alert { border-color: var(--pax-q); box-shadow: inset 3px 0 0 var(--pax-q); }
+.lbl.alert small { color: var(--pax-q); font-weight: 700; }
+.lbl.down { border-color: var(--bad); box-shadow: inset 3px 0 0 var(--bad); }
+.lbl.down small { color: var(--bad); font-weight: 700; }
+.lbl.rw { background: transparent; border: 0; color: var(--ink-3); font-family: var(--font-sign); letter-spacing: .08em; font-size: 10.5px; }
+.lbl.gate { font-family: var(--font-sign); background: var(--sign); color: var(--sign-ink); border-color: var(--sign); padding: 1px 5px; }
+.lbl.gate small { color: var(--sign-ink); }
+.lbl.track { background: var(--surface); border-color: var(--bag); box-shadow: inset 0 -3px 0 var(--bag); padding-bottom: 5px; }
+.lbl.track::after { content: ""; position: absolute; left: 50%; bottom: -9px; width: 1px; height: 9px; background: var(--bag); }
+
+/* ---- 左上: 識別板と時計 ---- */
+#topBar { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); right: 16px; top: 14px; display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: start; pointer-events: none; }
+#ident { justify-self: start; display: flex; align-items: stretch; gap: 0; pointer-events: none;
+  background: var(--glass); border: 1px solid var(--line); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+#ident .code { background: var(--plate); color: var(--plate-ink); font-family: var(--font-sign); font-weight: 700; padding: 7px 10px 6px; display: flex; flex-direction: column; justify-content: center; line-height: 1.05; }
+#ident .code b { font-size: 21px; letter-spacing: .04em; }
+#ident .code span { font-size: 10px; letter-spacing: .14em; opacity: .75; }
+#ident .ttl { padding: 6px 12px 5px; display: flex; flex-direction: column; justify-content: center; }
+#ident h1 { font-size: 14px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+#ident .sub { font-size: 10.5px; color: var(--ink-2); white-space: nowrap; }
+#ident .clock { border-left: 1px solid var(--line); padding: 4px 12px 3px; display: flex; flex-direction: column; justify-content: center; }
+#clock { font-size: 24px; font-weight: 700; line-height: 1.1; }
+#ident .clock span { font-size: 10px; color: var(--ink-2); white-space: nowrap; }
+
+/* ---- 上中央: 運用モードの切替（誘導路の標識板: 黒地に黄 = 現在地、黄地に黒 = 行き先）---- */
+#modeSwitch { pointer-events: auto; display: flex; background: var(--glass); border: 1px solid var(--line); padding: 3px; gap: 3px;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+#modeSwitch button { font-family: var(--font-sign); font-weight: 700; font-size: 14px; padding: 8px 16px 7px; min-width: 132px; color: var(--ink-2); display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+#modeSwitch button small { font-family: var(--font-jp); font-weight: 400; font-size: 10px; opacity: .85; }
+#modeSwitch button[aria-checked="true"]#modeBase { background: var(--plate); color: var(--plate-ink); }
+#modeSwitch button[aria-checked="true"]#modeAi { background: var(--sign); color: var(--sign-ink); }
+#modeSwitch button:not([aria-checked="true"]):hover { background: var(--line-2); color: var(--ink); }
+#worldFlash { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: var(--s-sky); }
+#worldFlash.on { animation: flash .5s ease-out; }
+@keyframes flash { 0% { opacity: .85; } 100% { opacity: 0; } }
+</style>
+<style>
+/* ---- 舞台の下: カメラ・時間・シナリオ・表示 ---- */
+#dock { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); right: 16px; bottom: 14px; display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; pointer-events: none; }
+#dockSlot { flex-basis: 100%; }
+#ctlBars { display: flex; flex-wrap: wrap; gap: 8px; }
+#dock > * { pointer-events: auto; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; background: var(--glass); border: 1px solid var(--line); padding: 4px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); max-width: 100%; }
+.bar .cap { font-size: 10px; color: var(--ink-2); padding: 0 3px 0 4px; }
+.bar .sep { width: 1px; align-self: stretch; background: var(--line); margin: 2px 4px; }
+.chip { font-size: 11.5px; font-weight: 700; padding: 5px 8px 4px; color: var(--ink-2); border: 1px solid transparent; white-space: nowrap; min-height: 28px; }
+.chip:hover { background: var(--line-2); color: var(--ink); }
+.chip[aria-pressed="true"], .chip[aria-checked="true"] { background: var(--plate); color: var(--plate-ink); }
+.chip.num { font-weight: 700; }
+.chip.scn { border-color: var(--line); color: var(--ink); }
+.chip.scn::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 6px; background: var(--bad); transform: rotate(45deg) translateY(-1px); }
+.chip.scn[disabled] { opacity: .45; cursor: default; }
+.chip.scn[data-active="1"] { background: var(--bad); color: #fff; border-color: var(--bad); }
+.chip.scn[data-active="1"]::before { background: #fff; }
+#btnPlay { width: 34px; display: grid; place-items: center; }
+#btnPlay svg { width: 12px; height: 12px; fill: currentColor; }
+#caption { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); width: min(560px, calc(100% - 32px)); background: var(--plate); color: var(--plate-ink); padding: 10px 14px 9px; pointer-events: none; }
+#caption b { display: block; font-size: 13px; }
+#caption span { font-size: 12px; opacity: .92; }
+#caption .step { font-family: var(--font-num); font-size: 10px; opacity: .7; float: right; }
+
+/* ---- 凡例 ---- */
+#legend { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); top: 132px; background: var(--glass); border: 1px solid var(--line); padding: 7px 10px 6px; font-size: 11px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: none; }
+#legend { pointer-events: auto; }
+#legend summary { font-size: 11px; font-weight: 700; cursor: pointer; list-style: none; display: flex; align-items: center; gap: 6px; }
+#legend summary::-webkit-details-marker { display: none; }
+#legend summary::after { content: ""; width: 6px; height: 6px; border-right: 1.5px solid var(--ink-2); border-bottom: 1.5px solid var(--ink-2); transform: rotate(45deg) translateY(-2px); margin-left: auto; }
+#legend[open] summary::after { transform: rotate(-135deg) translateY(-2px); }
+#legend[open] summary { margin-bottom: 5px; }
+#legend h3 { font-size: 10px; font-weight: 400; color: var(--ink-2); letter-spacing: .08em; margin: 0 0 2px; }
+#legend ul { list-style: none; margin: 0 0 5px; padding: 0; display: grid; gap: 1px; }
+#legend ul:last-child { margin-bottom: 0; }
+#legend li { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+#legend i { display: inline-block; flex: none; }
+#legend i.p { width: 6px; height: 11px; border-radius: 3px; }
+#legend i.b { width: 9px; height: 7px; }
+#legend .heat { display: flex; align-items: center; gap: 5px; margin-top: 4px; color: var(--ink-2); font-size: 10px; }
+#legend .heat i { width: 64px; height: 6px; background: linear-gradient(90deg, rgba(255, 196, 0, .15), #FFB300, #F4511E, #C2185B); }
+
+/* ---- 右: 計器盤 ---- */
+#panel { background: var(--surface); border-left: 1px solid var(--line); min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+#tabs { display: none; }
+#panelBody { overflow-y: auto; min-height: 0; flex: 1; padding: 14px max(16px, env(safe-area-inset-right, 0px)) 14px 16px; display: flex; flex-direction: column; gap: 14px; }
+.sec > h2 { font-size: 11px; font-weight: 700; color: var(--ink-2); letter-spacing: .08em; display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding-bottom: 5px; border-bottom: 1px solid var(--line); margin-bottom: 7px; }
+.sec > h2 span { font-weight: 400; letter-spacing: 0; color: var(--ink-3); font-size: 10.5px; }
+#headline { border: 1px solid var(--line); border-left: 4px solid var(--sign); padding: 9px 12px 8px; background: var(--bg); }
+#headline p { font-size: 11.5px; color: var(--ink-2); }
+#headline strong { display: block; font-size: 17px; line-height: 1.3; text-wrap: balance; }
+#headline strong em { font-style: normal; font-family: var(--font-num); font-size: 26px; letter-spacing: -.02em; }
+#headline strong em.good { color: var(--good); } #headline strong em.bad { color: var(--bad); }
+.seg { display: inline-flex; border: 1px solid var(--line); }
+.seg button { font-size: 10.5px; padding: 2px 8px 1px; color: var(--ink-2); font-weight: 400; letter-spacing: 0; }
+.seg button[aria-pressed="true"] { background: var(--plate); color: var(--plate-ink); }
+
+table.kpi { width: 100%; border-collapse: collapse; }
+table.kpi th, table.kpi td { padding: 5px 0 4px; border-bottom: 1px solid var(--line-2); text-align: right; vertical-align: baseline; }
+table.kpi thead th { font-size: 10.5px; font-weight: 700; color: var(--ink-2); border-bottom: 1px solid var(--line); padding-top: 0; }
+table.kpi thead th.on { color: var(--ink); box-shadow: inset 0 -2px 0 var(--ink); }
+table.kpi thead th.ai.on { box-shadow: inset 0 -2px 0 var(--sign); }
+table.kpi th[scope="row"] { text-align: left; font-weight: 400; font-size: 12px; padding-right: 6px; }
+table.kpi th[scope="row"] small { display: block; font-size: 10px; color: var(--ink-3); line-height: 1.2; }
+table.kpi td { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: 14px; width: 62px; }
+table.kpi td.on { font-weight: 700; }
+table.kpi td.d { font-size: 11.5px; width: 58px; color: var(--ink-3); }
+table.kpi td.d.good { color: var(--good); } table.kpi td.d.bad { color: var(--bad); }
+
+.chart { position: relative; }
+.chart canvas { display: block; width: 100%; height: 108px; }
+.chart .ck { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 10.5px; color: var(--ink-2); margin: 0 0 2px; }
+.chart .ck i { display: inline-block; width: 14px; height: 0; border-top: 2px solid; vertical-align: middle; margin-right: 4px; }
+.chart .ck i.bar { height: 8px; width: 8px; border: 0; }
+.chart .ck i.dash { border-top-style: dashed; }
+#logTabs { display: inline-flex; }
+#log, #fids { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+#log li { display: grid; grid-template-columns: 42px 1fr; gap: 6px; padding: 5px 0 4px; border-bottom: 1px solid var(--line-2); font-size: 12px; line-height: 1.45; }
+#log li time { font-family: var(--font-num); font-size: 11px; color: var(--ink-2); padding-top: 1px; }
+#log li.ai p::before, #log li.scn p::before, #log li.ops p::before { font-size: 9.5px; font-weight: 700; padding: 1px 4px 0; margin-right: 5px; vertical-align: 1px; }
+#log li.ai p::before { content: "AI"; background: var(--sign); color: var(--sign-ink); font-family: var(--font-sign); }
+#log li.scn p::before { content: "事象"; background: var(--bad); color: #fff; }
+#log li.ops p::before { content: "係員"; background: var(--line); color: var(--ink); }
+#log li.empty { display: block; color: var(--ink-3); }
+#fids li { display: grid; grid-template-columns: 44px 58px 34px 1fr; gap: 6px; align-items: baseline; padding: 4px 0 3px; border-bottom: 1px solid var(--line-2); font-size: 11.5px; }
+#fids li .num { font-size: 12px; }
+#fids li .g { font-family: var(--font-sign); font-weight: 700; background: var(--sign); color: var(--sign-ink); text-align: center; font-size: 10.5px; padding: 1px 0 0; }
+#fids li .st { color: var(--ink-2); text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#fids li .st b { color: var(--ink); font-family: var(--font-num); font-weight: 400; }
+#fids li .st.warn b { color: var(--bad); font-weight: 700; }
+#note { flex: none; font-size: 10.5px; color: var(--ink-2); line-height: 1.5; border-top: 1px solid var(--line); padding: 7px max(16px, env(safe-area-inset-right, 0px)) 8px 16px; background: var(--bg); }
+#secCtl { display: none; }
+#ticker { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); top: 74px; width: min(700px, calc(100% - 32px)); display: grid; grid-template-columns: auto auto 1fr; gap: 0 8px; align-items: baseline;
+  background: var(--glass); border: 1px solid var(--line); padding: 6px 10px 5px; font-size: 12px; line-height: 1.45; pointer-events: none; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+#ticker span { font-size: 9.5px; font-weight: 700; padding: 1px 5px 0; align-self: start; margin-top: 2px; background: var(--line); color: var(--ink); white-space: nowrap; }
+#ticker[data-kind="ai"] span { background: var(--sign); color: var(--sign-ink); font-family: var(--font-sign); }
+#ticker[data-kind="scn"] span { background: var(--bad); color: #fff; }
+#ticker time { font-size: 11px; color: var(--ink-2); }
+#ticker p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+#toast { position: absolute; left: 50%; top: 132px; transform: translateX(-50%); background: var(--plate); color: var(--plate-ink); font-weight: 700; font-size: 12.5px; padding: 7px 12px 6px; max-width: calc(100% - 32px); pointer-events: none; opacity: 0; transition: opacity .3s; }
+#toast[data-kind="scn"] { background: var(--bad); color: #fff; }
+#toast.on { opacity: 1; }
+#boot { position: absolute; inset: 0; display: grid; place-items: center; background: var(--s-sky); color: var(--ink-2); font-size: 12px; z-index: 5; padding: 0 24px; text-align: center; }
+#bootTrack { height: 3px; background: var(--line); margin: 10px auto 0; width: min(280px, 100%); overflow: hidden; }
+#bootBar { display: block; height: 100%; background: var(--ink); transform: scaleX(0); transform-origin: left; }
+</style>
+<style>
+@media (max-width: 1380px) { #ident .ttl { display: none; } }
+@media (max-width: 1180px) { :root { --panel-w: 344px; } #modeSwitch button { min-width: 112px; padding-inline: 10px; } }
+@media (min-width: 861px) and (max-height: 760px) { .chart canvas { height: 84px; } }
+
+/* ---- スマホ幅: 上に舞台、下に計器盤のシート（タブ切替）---- */
+@media (max-width: 860px) {
+  #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(250px, 46%) minmax(0, 1fr); }
+  #topBar { top: 8px; right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column-reverse; gap: 6px; align-items: stretch; }
+  #ident { align-self: flex-start; }
+  #ticker { display: none; }
+  #modeSwitch button { flex: 1; min-width: 0; font-size: 13px; padding: 6px 4px 5px; }
+  #ident .ttl { display: none; }
+  #ident .code { padding: 4px 7px 3px; } #ident .code b { font-size: 15px; } #ident .code span { font-size: 8.5px; }
+  #ident .clock { padding: 2px 8px 1px; border-left: 0; } #clock { font-size: 17px; } #ident .clock span { font-size: 9px; }
+  #stageWrap > #legend { display: none; }
+  #dock { left: 0; right: 0; bottom: 6px; gap: 5px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  #dock .bar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; width: 100%; }
+  #dock .bar::-webkit-scrollbar { display: none; }
+  #dock .bar .cap { display: none; }
+  .chip { padding: 6px 9px 5px; min-height: 32px; font-size: 12px; }
+  #caption { padding: 7px 10px 6px; } #caption b { font-size: 12px; } #caption span { font-size: 11px; }
+  #toast { top: 104px; left: auto; right: max(16px, env(safe-area-inset-right, 0px)); transform: none; max-width: 62%; font-size: 11.5px; }
+  .lbl { font-size: 10px; padding: 1px 4px; } .lbl.major { font-size: 10.5px; } .lbl small { font-size: 9px; }
+
+  #panel { border-left: 0; border-top: 1px solid var(--line); }
+  #tabs { display: flex; border-bottom: 1px solid var(--line); padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); flex: none; }
+  #tabs button { flex: 1; font-size: 12.5px; font-weight: 700; padding: 9px 2px 7px; color: var(--ink-2); border-bottom: 3px solid transparent; margin-bottom: -1px; min-height: 40px; }
+  #tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--sign); }
+  #panelBody { padding: 10px max(16px, env(safe-area-inset-right, 0px)) 12px max(16px, env(safe-area-inset-left, 0px)); gap: 10px; }
+  #panel .sec { display: none; }
+  #panel[data-tab="kpi"] #secKpi, #panel[data-tab="chart"] #secChart, #panel[data-tab="log"] #secLog, #panel[data-tab="ctl"] #secCtl { display: block; }
+  #secCtl .bar { background: none; border: 0; padding: 0; backdrop-filter: none; -webkit-backdrop-filter: none; gap: 6px; margin-bottom: 12px; }
+  #secCtl .bar .cap { flex-basis: 100%; padding: 0; font-size: 11px; font-weight: 700; }
+  #secCtl .bar .sep { display: none; }
+  #secCtl .chip { border-color: var(--line); min-height: 36px; padding-inline: 12px; }
+  #secCtl #legend { position: static; background: none; border: 0; padding: 0; backdrop-filter: none; -webkit-backdrop-filter: none; font-size: 12px; }
+  #secCtl #legend summary { font-size: 11px; color: var(--ink-2); }
+  #secCtl #ctlBars { display: block; }
+  #note { font-size: 10px; padding: 5px max(16px, env(safe-area-inset-right, 0px)) calc(5px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+  #note span { display: none; }
+  #headline strong { font-size: 15px; } #headline strong em { font-size: 22px; }
+  .chart canvas { height: 96px; }
+}
+@media (max-width: 860px) and (max-height: 560px) { #app { grid-template-rows: minmax(200px, 52%) minmax(0, 1fr); } #ident { display: none; } }
+@media (prefers-reduced-motion: reduce) { #worldFlash.on { animation: none; } .lbl, #toast { transition: none; } }
+</style>
+<div id="app">
+  <div id="stageWrap">
+    <canvas id="stage" role="img" aria-label="羽田空港をモデルにしたターミナルの 3D 構想図。上階に旅客の流れ、下階に手荷物の流れを表示します。"></canvas>
+    <div id="labels"></div>
+    <div id="worldFlash"></div>
+    <div id="topBar">
+    <header id="ident">
+      <div class="code"><b>HND</b><span>RJTT</span></div>
+      <div class="ttl"><h1>羽田フローツイン</h1><p class="sub">旅客と手荷物の流れを 2 つの運用で同時に計算</p></div>
+      <div class="clock"><div id="clock" class="num">--:--</div><span id="clockSub">シミュレーション時刻</span></div>
+    </header>
+    <div id="modeSwitch" role="radiogroup" aria-label="表示する運用モード">
+      <button id="modeBase" type="button" role="radio" aria-checked="false">従来運用<small>固定の計画と事後の対応</small></button>
+      <button id="modeAi" type="button" role="radio" aria-checked="true">AI 最適化<small>予測して先に手配する</small></button>
+    </div>
+    </div>
+    <div id="ticker" hidden><span id="tickKind"></span><time id="tickTime" class="num"></time><p id="tickText"></p></div>
+    <details id="legend" open>
+      <summary id="legendSum">凡例</summary>
+      <h3>旅客（上階）</h3>
+      <ul>
+        <li><i class="p" style="background:var(--pax)"></i>移動中・搭乗待ち</li>
+        <li><i class="p" style="background:var(--pax-q)"></i>待ち行列で 3 分以上</li>
+        <li><i class="p" style="background:var(--pax-x)"></i>乗り継ぎ</li>
+        <li><i class="p" style="background:var(--pax-arr)"></i>到着</li>
+      </ul>
+      <h3>手荷物（下階）</h3>
+      <ul>
+        <li><i class="b" style="background:var(--bag)"></i>タグ読取済み</li>
+        <li><i class="b" style="background:var(--bag-re)"></i>再循環・滞留・仮置き</li>
+        <li><i class="b" style="background:var(--bag-ng)"></i>読取不良・ミスソート・積み残し</li>
+        <li><i class="b" style="background:var(--bag-ebs)"></i>EBS で保管中</li>
+      </ul>
+      <div class="heat"><span>混雑 低</span><i></i><span>高</span></div>
+    </details>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <div id="caption" hidden><span class="step" id="capStep"></span><b id="capTitle"></b><span id="capText"></span></div>
+    <div id="dock">
+      <div class="bar" id="camBar" role="group" aria-label="カメラ">
+        <button class="chip" type="button" id="camAll" data-cam="all" aria-pressed="true">全景</button>
+        <button class="chip" type="button" id="camLobby" data-cam="lobby" aria-pressed="false">出発ロビー</button>
+        <button class="chip" type="button" id="camSec" data-cam="sec" aria-pressed="false">保安検査場</button>
+        <button class="chip" type="button" id="camBhs" data-cam="bhs" aria-pressed="false">手荷物仕分け</button>
+        <button class="chip" type="button" id="camApron" data-cam="apron" aria-pressed="false">エプロン</button>
+        <span class="sep"></span>
+        <button class="chip" type="button" id="btnTour" aria-pressed="false">自動ツアー</button>
+      </div>
+      <div class="bar" id="timeBar" role="group" aria-label="時間">
+        <button class="chip" type="button" id="btnPlay" aria-label="一時停止"><svg viewBox="0 0 12 12" aria-hidden="true"><path id="playIcon" d="M2 1h3v10H2zM7 1h3v10H7z"/></svg></button>
+        <span class="cap">1 秒あたり</span>
+        <button class="chip num" type="button" id="spd1" data-spd="1" aria-pressed="true">1 分</button>
+        <button class="chip num" type="button" id="spd2" data-spd="2" aria-pressed="false">2 分</button>
+        <button class="chip num" type="button" id="spd4" data-spd="4" aria-pressed="false">4 分</button>
+        <span class="sep"></span>
+        <button class="chip" type="button" id="btnRestart">05:00 からやり直す</button>
+      </div>
+      <div id="dockSlot">
+        <div id="ctlBars">
+          <div class="bar" id="scnBar" role="group" aria-label="シナリオを入れる">
+            <span class="cap">事象を入れる</span>
+            <button class="chip scn" type="button" id="scnEds">EDS 2 号機が停止</button>
+            <button class="chip scn" type="button" id="scnExtra">臨時便を追加</button>
+            <button class="chip scn" type="button" id="scnCp">検査場 B の機器が故障</button>
+          </div>
+          <div class="bar" id="layBar" role="group" aria-label="表示">
+            <span class="cap">表示</span>
+            <button class="chip" type="button" id="layHeat" aria-pressed="true">混雑</button>
+            <button class="chip" type="button" id="layLabel" aria-pressed="true">ラベル</button>
+            <button class="chip" type="button" id="layPath" aria-pressed="true">手荷物の経路線</button>
+            <button class="chip" type="button" id="layRoof" aria-pressed="false">上階を透かす</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="boot"><div><p id="bootMsg">3D ライブラリを読み込んでいます</p><div id="bootTrack"><i id="bootBar"></i></div></div></div>
+  </div>
+
+  <aside id="panel" data-tab="kpi" aria-label="運用の指標">
+    <div id="tabs" role="tablist">
+      <button type="button" role="tab" id="tabKpi" data-tab="kpi" aria-selected="true">指標</button>
+      <button type="button" role="tab" id="tabChart" data-tab="chart" aria-selected="false">グラフ</button>
+      <button type="button" role="tab" id="tabLog" data-tab="log" aria-selected="false">ログ・便</button>
+      <button type="button" role="tab" id="tabCtl" data-tab="ctl" aria-selected="false">操作</button>
+    </div>
+    <div id="panelBody">
+      <section class="sec" id="secKpi">
+        <div id="headline"><p id="hlLead">AI 最適化の効果（同じ需要・同じ乱数での実測）</p><strong id="hlMain">計測中</strong><p id="hlSub"></p></div>
+        <h2 style="margin-top:12px">従来運用と AI 最適化の比較
+          <span class="seg" role="group" aria-label="集計範囲"><button type="button" id="winAll" aria-pressed="true">05:00 から累計</button><button type="button" id="win60" aria-pressed="false">直近 60 分</button></span></h2>
+        <table class="kpi" id="kpiTable">
+          <thead><tr><th scope="col"></th><th scope="col" id="thBase">従来</th><th scope="col" id="thAi" class="ai">AI</th><th scope="col">差</th></tr></thead>
+          <tbody id="kpiBody"></tbody>
+        </table>
+      </section>
+      <section class="sec" id="secChart">
+        <h2>15 分ごとの推移 <span>縦線 = 現在時刻</span></h2>
+        <div class="chart"><p class="ck"><span><i class="bar" style="background:var(--pax)"></i>旅客の到着（人/15分）</span><span><i class="dash" style="border-color:var(--ink-3)"></i>AI が使う到着予測</span></p><canvas id="chDemand" role="img" aria-label="15 分ごとの旅客到着数と到着予測"></canvas></div>
+        <div class="chart" style="margin-top:8px"><p class="ck"><span><i style="border-color:var(--base-c)"></i>従来運用</span><span><i style="border-color:var(--ai-c)"></i>AI 最適化</span><span>保安検査の平均待ち（分）</span></p><canvas id="chWait" role="img" aria-label="15 分ごとの保安検査の平均待ち時間。従来運用と AI 最適化"></canvas></div>
+        <div class="chart" style="margin-top:8px"><p class="ck"><span><i style="border-color:var(--base-c)"></i>従来運用</span><span><i style="border-color:var(--ai-c)"></i>AI 最適化</span><span>手荷物の処理時間（分）</span></p><canvas id="chBag" role="img" aria-label="15 分ごとの手荷物の処理時間。従来運用と AI 最適化"></canvas></div>
+      </section>
+      <section class="sec" id="secLog">
+        <h2><span id="logTitle" style="font-weight:700;color:var(--ink-2);letter-spacing:.08em;font-size:11px">AI の判断ログ</span>
+          <span class="seg" id="logTabs" role="group" aria-label="表示の切替"><button type="button" id="logTabLog" aria-pressed="true">ログ</button><button type="button" id="logTabFids" aria-pressed="false">出発便</button></span></h2>
+        <ul id="log" aria-live="off"></ul>
+        <ul id="fids" hidden></ul>
+      </section>
+      <section class="sec" id="secCtl"><div id="sheetSlot"></div></section>
+    </div>
+    <p id="note">シミュレーションの値は架空の設定に基づくもので、羽田空港の実際のレイアウト・運用データではありません。<span>便名・ゲート・施設の配置は構想図です。歩行と搬送の速さは、表示のために実際より遅くしています。</span></p>
+  </aside>
+</div>
+<script>
+// three.js を読み込めなかった場合に、起動中の表示のまま止まらないようにする
+window.addEventListener('error', function (e) { var b = document.getElementById('boot'), m = document.getElementById('bootMsg'); if (b && !b.hidden) m.textContent = '表示の準備中にエラーが起きました: ' + (e.message || '不明なエラー'); });
+setTimeout(function () { var b = document.getElementById('boot'), m = document.getElementById('bootMsg'); if (b && !b.hidden && m.textContent.indexOf('読み込んでいます') >= 0) m.textContent = '3D ライブラリ（three.js）を読み込めていません。ネットワークを確認して、ページを読み込み直してください。'; }, 15000);
+</script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+
+// =====================================================================
+// 32 config : レイアウトとシミュレーションの定数（three.js / DOM に依存しない）
+// 座標: x = 西(-)→東(+)、z = エアサイド(-)→ランドサイド(+)、y = 上
+// =====================================================================
+const DAY0 = 300;            // 05:00（分）
+const DAY1 = 1440;           // 24:00
+const YU = 12, YL = 0;       // 上階（出発）/ 下階（手荷物）の床高さ
+
+const LAY = {
+  X0: -172, X1: 172, ZA: -14, ZL: 84,
+  doors: [
+    { x: -112, z: 86, name: '北口' }, { x: 0, z: 86, name: '中央口' }, { x: 112, z: 86, name: '南口' },
+    { x: 174, z: 62, name: '駅連絡通路', station: true },
+  ],
+  doorShare: [0.17, 0.22, 0.16, 0.45],
+  islands: [-125, -75, -25, 25, 75, 125].map((x, i) => ({ x, z0: 53, z1: 69, name: 'ABCDEF'[i] })),
+  dropsPerIsland: 10,
+  cps: [-104, 0, 104].map((x, i) => ({ x, name: 'ABC'[i] })),
+  cpLanes: 6, laneGap: 4.2,
+  zQ: 44.5,        // 待ち行列の先頭
+  zLaneIn: 41, zLaneOut: 27,
+  zImm: 16,        // 顔認証ゲート
+  immGates: 7,
+  zConc: -2,       // コンコース中心
+  // 105〜112 は搭乗橋つきの固定ゲート。9 番目は臨時便用のバスゲートとオープンスポット
+  gates: [-140, -100, -60, -20, 20, 60, 100, 140].map((x, i) => ({ x, no: 105 + i, sx: x })).concat([{ x: 156, no: 131, sx: 212, remote: true }]),
+  zGate: -13,
+  standNoseZ: -40,
+};
+
+// ---- 下階（BHS: baggage handling system）----
+const BHS = {
+  edsX: [-72, 0, 72],
+  zCollector: 61, zCross: 51, zEdsIn: 47, zEdsOut: 39,
+  loop: { a: 92, r: 8, zc: 26 },
+  lateralX: Array.from({ length: 12 }, (_, k) => 77 - 14 * k),
+  zLat0: 15, zLat1: 3,           // シュート下端〜ラテラル末端
+  zTrain: -5,
+  ebs: { x0: -162, x1: -112, z0: 8, z1: 44, cols: 14, rows: 11, levels: 5 },
+  mes: { x: 116, z: 26 },
+  hold: { x0: 108, x1: 150, z0: 0, z1: 12 },     // 従来運用の手作業仮置き
+  zRoad: -25,
+  xferIn: { x: 150, z: 34 },                      // 乗り継ぎ手荷物の投入口
+  claim: [{ x: -100, z: 72 }, { x: -50, z: 72 }],  // 到着ターンテーブル
+  arrIn: { x: -166, z: -6 },
+};
+BHS.loop.L = 4 * BHS.loop.a + 2 * Math.PI * BHS.loop.r;
+BHS.uEds = BHS.edsX.map(x => x + BHS.loop.a);
+BHS.uMes = 2 * BHS.loop.a + Math.PI * BHS.loop.r / 2;
+BHS.uLat = BHS.lateralX.map(x => 2 * BHS.loop.a + Math.PI * BHS.loop.r + (BHS.loop.a - x));
+BHS.uEbs = 4 * BHS.loop.a + Math.PI * BHS.loop.r * 1.5;
+BHS.uXfer = 2 * BHS.loop.a - 4;
+
+function loopPos(u, out) {
+  const { a, r, zc, L } = BHS.loop; u = ((u % L) + L) % L;
+  const pr = Math.PI * r;
+  if (u < 2 * a) { out.x = -a + u; out.z = zc + r; }
+  else if (u < 2 * a + pr) { const t = (u - 2 * a) / r; out.x = a + r * Math.sin(t); out.z = zc + r * Math.cos(t); }
+  else if (u < 4 * a + pr) { out.x = a - (u - 2 * a - pr); out.z = zc - r; }
+  else { const t = (u - 4 * a - pr) / r; out.x = -a - r * Math.sin(t); out.z = zc - r * Math.cos(t); }
+  return out;
+}
+
+// ---- 速度（表示のために歩行・搬送を実際より遅くしている。単位 = ワールド単位/分）----
+const SPD = { walk: 22, belt: 34, loop: 62, tug: 70, chute: 30 };
+
+// ---- 処理能力・運用ルール ----
+const P = {
+  secSvcMean: 0.50,        // 保安検査 1 レーン 1 人あたり（分）→ 約 120 人/時
+  staffPerLane: 5,         // 1 レーンの要員（人時の換算用）
+  laneLead: 20,            // レーン開閉の指示から実施まで（分）。両モード共通
+  dropSvcMean: 1.25,       // 自動手荷物預け機 1 台 1 人あたり（分）
+  immSvcMean: 0.22,        // 顔認証ゲート 1 台 1 人あたり（分）
+  edsSvc: 0.135,           // EDS 1 ライン 1 個あたり（分）→ 約 440 個/時
+  edsL2: 0.12, edsL2Time: 1.6, edsL3: 0.012, edsL3Time: 8,
+  readBarcode: 0.952, readRfid: 0.998,
+  missortBarcode: 0.004, missortRfid: 0.0004,
+  mesStations: 2, mesSvc: 2.3,
+  loopCap: 330,            // ソーターのトレイ数（同時に載る手荷物の上限）
+  latCap: 36,              // ラテラル 1 本に滞留できる個数
+  loadRate: 7,             // メイクアップの積み付け（個/分）
+  trainCap: 120,           // ドーリー 4 台の合計
+  tugs: 12,
+  roster: [0.9, 0],         // 従来運用の人員計画: レーン数 = ceil(1 時間の到着見込み × 処理時間 × 係数 + 上乗せ)
+  acLoadRate: 12,          // 機側での搭載（個/分）
+  holdClose: 8,            // 貨物室を閉める時刻（出発の何分前）
+  bagDropClose: 45,        // 預け入れ締切（出発の何分前）
+  gateClose: 10, boardStart: 32, boardRate: 14,
+  base: { latOpen: 120, train1: 52, final: 25, holdAfterLaps: 3, holdMis: 0.012, edsSwitch: 10, edsOverflow: 60 },
+  ai: { ebsRelease: 80, comply: 0.55, complyFault: 0.78, margin: 1.0, extraLanes: 1, edsDetect: 1.5 },
+};
+
+const hhmm = m => { m = Math.max(0, Math.round(m)); const h = Math.floor(m / 60); return String(h > 24 ? h % 24 : h).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+// =====================================================================
+// 40 world : 便スケジュールと需要（旅客・手荷物）を乱数シードから作る。
+// 2 つのシミュレーション（従来運用 / AI 最適化）は同じ World を読むので、
+// 旅客ごとの到着時刻・所要時間・タグの読取乱数は両モードで同一になる。
+// =====================================================================
+function mulberry32(a) {
+  return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+const lerp = (a, b, t) => a + (b - a) * t;
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+const bankDensity = t => { const g = (m, s, h) => h * Math.exp(-0.5 * ((t - m) / s) ** 2); return Math.min(1, g(470, 70, 1) + g(750, 80, 0.45) + g(1100, 85, 0.95) + g(1385, 45, 0.8)); };
+// 出発の何分前に空港へ着くか（58〜136 分に山、12% は 136〜185 分の早着）
+const leadTime = r => r() < 0.12 ? 136 + 49 * r() : 58 + 78 * (r() + r() + r()) / 3;
+const gammaish = (r, mean) => mean * (0.35 + 1.3 * (r() + r()) / 2);   // 平均 mean、0.35〜1.65 倍
+
+function makeFlight(world, gate, arr, dep, opt = {}) {
+  const r = mulberry32(world.seed * 7919 + world.flights.length * 104729 + 17);
+  const wide = r() < 0.72;
+  const paxOut = opt.pax || Math.round(wide ? 232 + 96 * r() : 150 + 34 * r());
+  const f = {
+    id: world.flights.length, gate, arr, dep,
+    code: 'XX ' + (101 + ((world.flights.length * 37 + gate * 211) % 880)),
+    wide, paxOut, paxIn: arr == null ? 0 : Math.round(paxOut * (0.8 + 0.3 * r())),
+    island: clamp(Math.round(gate * 5 / 7 + (r() * 2.4 - 1.2)), 0, 5),
+    lateralFix: gate === 8 ? 11 : gate + Math.floor(gate / 2),   // 固定割当（12 本のうち 8 本を使う。臨時便は 12 番）
+    xb: [],
+    extra: !!opt.extra, nLocal: 0, nBags: 0, fcErr: 0.76 + 0.48 * r(), fcShift: (r() * 2 - 1) * 14,   // 予測の誤差: 人数 ±24%、来港の時刻 ±14 分
+  };
+  world.flights.push(f);
+  // ---- 出発旅客 ----
+  const xferShare = 0.10 + 0.10 * r();
+  for (let i = 0; i < paxOut; i++) {
+    const xfer = r() < xferShare;
+    const p = {
+      id: world.paxSeq++, f: f.id, xfer, bags: 0, bagU: null,
+      tArr: 0, door: 0, off: r() * 2 - 1,
+      svcDrop: gammaish(r, P.dropSvcMean), svcSec: gammaish(r, P.secSvcMean), svcImm: gammaish(r, P.immSvcMean),
+      uComply: r(), seatX: LAY.gates[gate].x + (r() * 2 - 1) * (gate === 8 ? 11 : 16), seatZ: -10.5 + r() * 15,
+    };
+    if (xfer) {
+      p.tArr = dep - (48 + 100 * r()); p.door = -1;
+      p.fromGate = (gate + 1 + Math.floor(r() * 7)) % 8;
+      if (r() < 0.8) { const xb = { t: dep - (r() < 0.07 ? 8 + 36 * r() : 62 + 190 * r() * r()), f: f.id, uEds: r(), uRead: r(), uMis: r(), uHold: r() }; world.xbags.push(xb); f.xb.push(xb); }
+    } else {
+      p.tArr = dep - leadTime(r);
+      const d = r(); let acc = 0; for (let k = 0; k < 4; k++) { acc += LAY.doorShare[k]; if (d < acc) { p.door = k; break; } }
+      const hb = r();
+      p.bags = hb < 0.28 ? 0 : hb < 0.86 ? 1 : 2;
+      if (p.bags) { p.bagU = []; for (let b = 0; b < p.bags; b++) p.bagU.push({ uEds: r(), uRead: r(), uMis: r(), uHold: r() }); p.svcDrop *= (1 + 0.45 * (p.bags - 1)); }
+      f.nLocal++; f.nBags += p.bags;
+    }
+    if (p.tArr < DAY0 + 1) p.tArr = DAY0 + 1 + 20 * r();
+    if (opt.minT && p.tArr < opt.minT) p.tArr = opt.minT + 6 * r();
+    world.pax.push(p);
+  }
+  return f;
+}
+
+function buildWorld(seed) {
+  const world = { seed, flights: [], pax: [], xbags: [], paxSeq: 0, leadSamples: [] };
+  const r = mulberry32(seed);
+  for (let g = 0; g < 8; g++) {
+    let dep = 424 + ((g * 5) % 8) * 13 + r() * 8, arr = null;
+    while (dep < DAY1 - 14) {
+      makeFlight(world, g, arr, dep);
+      const gap = lerp(128, 14, Math.pow(bankDensity(dep + 45), 0.8)) * (0.85 + 0.3 * r());
+      arr = dep + gap; dep = arr + 76 + 26 * r();
+    }
+  }
+  world.pax.sort((a, b) => a.tArr - b.tArr);
+  world.xbags.sort((a, b) => a.t - b.t);
+  const rl = mulberry32(seed ^ 0x5bd1e995);
+  for (let i = 0; i < 240; i++) world.leadSamples.push(leadTime(rl));
+  world.rebuildForecast = () => buildForecast(world);
+  buildForecast(world);
+  world.fcIsland0 = world.fcIsland.map(a => a.slice()); world.fcTotal0 = world.fcTotal.slice(); world.rosterCache = {};
+  return world;
+}
+
+// AI が使う到着予測: 便スケジュール × 既知の来港パターン（実際の乱数は見ない）。5 分刻み。
+const FC_BIN = 5, FC_N = Math.ceil((DAY1 - DAY0) / FC_BIN) + 4;
+function buildForecast(world) {
+  const fc = world.fcIsland = Array.from({ length: 6 }, () => new Float32Array(FC_N));
+  world.fcTotal = new Float32Array(FC_N);
+  const n = world.leadSamples.length;
+  for (const f of world.flights) {
+    const exp = f.paxOut * 0.85 * f.fcErr / n;       // ローカル旅客の見込み（便ごとの誤差つき）
+    for (const lead of world.leadSamples) {
+      const b = Math.floor((Math.max(DAY0 + 1, f.dep - lead + f.fcShift) - DAY0) / FC_BIN);
+      if (b >= 0 && b < FC_N) { fc[f.island][b] += exp; world.fcTotal[b] += exp; }
+    }
+  }
+}
+
+// シナリオ「臨時便の追加」: 空いているゲートに便を足し、旅客・手荷物を需要に混ぜる
+function addExtraFlight(world, now) {
+  const dep = now + 105;
+  if (dep > DAY1 - 5 || world.flights.some(f => f.gate === 8 && Math.abs(f.dep - dep) < 140)) return null;   // オープンスポットは 1 か所
+  const best = 8;
+  const before = world.pax.length, xb = world.xbags.length;
+  const f = makeFlight(world, best, now + 24, dep, { extra: true, pax: 310, minT: now + 0.5 }); f.paxIn = 0;
+  f.code = 'XX 9' + String(10 + (world.flights.length % 80));
+  const added = world.pax.splice(before), addedX = world.xbags.splice(xb);
+  for (const p of added) { if (p.xfer) p.tArr = Math.max(p.tArr, now + 30 + 20 * (p.off + 1)); }
+  for (const b of addedX) b.t = Math.max(b.t, now + 30);
+  world.pax.push(...added); world.pax.sort((a, b) => a.tArr - b.tArr);
+  world.xbags.push(...addedX); world.xbags.sort((a, b) => a.t - b.t);
+  world.rebuildForecast();
+  return f;
+}
+// =====================================================================
+// 42 sim (旅客) : 1 つの運用モードを時間発展させる。mode 0 = 従来運用、1 = AI 最適化
+// =====================================================================
+const S = { WALK_DROP: 1, Q_DROP: 2, AT_DROP: 3, WALK_SEC: 4, Q_SEC: 5, IN_LANE: 6, WALK_IMM: 7, Q_IMM: 8, AT_IMM: 9,
+  WALK_GATE: 10, LOUNGE: 11, BOARD: 12, ARR_WALK: 13, CLAIM: 14, ARR_EXIT: 15 };
+const LANE_ORDER = [2, 3, 1, 4, 0, 5];
+const laneX = (cp, l) => LAY.cps[cp].x + (l - 2.5) * LAY.laneGap;
+const kioskPos = (isl, k) => ({ x: LAY.islands[isl].x + (k % 2 ? 4.6 : -4.6), z: LAY.islands[isl].z0 + 2 + (k >> 1) * 3 });
+function secSlot(cp, i, out) {       // 保安検査の待ち行列（つづら折り）の i 番目の位置
+  const row = Math.floor(i / 22), c = i % 22;
+  out.x = LAY.cps[cp].x + ((row & 1) ? (10.5 - c) : (c - 10.5)) * 1.2; out.z = LAY.zQ + row * 1.3; return out;
+}
+const dropSlot = (isl, i, out) => { const row = Math.floor(i / 9), c = i % 9; out.x = LAY.islands[isl].x + ((row & 1) ? (4 - c) : (c - 4)) * 1.15; out.z = LAY.islands[isl].z1 + 2.2 + row * 1.25; return out; };
+const immSlot = (cp, i, out) => { const row = Math.floor(i / 12), c = i % 12; out.x = LAY.cps[cp].x + ((row & 1) ? (5.5 - c) : (c - 5.5)) * 1.15; out.z = LAY.zImm + 2.6 + row * 1.15; return out; };
+const _slot = { x: 0, z: 0 };
+
+class Sim {
+  constructor(world, mode) {
+    this.world = world; this.mode = mode; this.t = DAY0;
+    this.pax = []; this.paxPtr = 0;
+    this.isl = LAY.islands.map(() => ({ q: [], free: new Float64Array(LAY.dropsPerIsland) }));
+    this.cp = LAY.cps.map(() => ({ q: [], free: new Float64Array(LAY.cpLanes), open: 1, target: 1, plan: [], limit: 99, limitUntil: 0,
+      enroute: 0, lastReq: -99, lastCall: -99, calmSince: 0, extra: 0, served: 0, waitEma: 0 }));
+    this.imm = LAY.cps.map(() => ({ q: [], free: new Float64Array(LAY.immGates) }));
+    this.fs = [];                      // 便ごとの状態（搭乗・手荷物）
+    this.log = []; this.nextCtl = DAY0; this.scn = { edsDown: -1, edsUntil: 0, edsSwitchAt: 0 };
+    this.initBags(); this.initKpi();
+    for (let c = 0; c < 3; c++) this.cp[c].open = this.cp[c].target = this.mode ? 1 : this.roster(DAY0, c);
+  }
+  flightState(i) {
+    while (this.fs.length <= i) this.fs.push(null);
+    return this.fs[i] || (this.fs[i] = { lounge: [], credit: 0, boarded: 0, missedPax: 0, bagsIn: 0, bagsLoaded: 0, bagsMissed: 0,
+      lat: -1, onWay: 0, lostN: 0, req: false, train: null, trainsSent: 0, finalSent: false, closed: false, arrDone: false, arrSpawn: 0, arrBagT: 0, opened: false });
+  }
+  addLog(kind, text) { this.log.push({ t: this.t, kind, text }); if (this.log.length > 400) this.log.shift(); }
+
+  go(a, st, pts) { a.st = st; a.wp = pts; const n = a.wp.shift(); a.tx = n[0]; a.tz = n[1]; }
+  spawnPax() {
+    const W = this.world;
+    while (this.paxPtr < W.pax.length && W.pax[this.paxPtr].tArr <= this.t) {
+      const p = W.pax[this.paxPtr++], f = W.flights[p.f];
+      if (f.dep <= this.t) continue;
+      const a = { p, f, x: 0, z: 0, lvl: 0, st: 0, tx: 0, tz: 0, wp: null, cp: -1, lane: -1, k: -1, t0: 0, tEnd: 0, spd: SPD.walk * (0.86 + 0.14 * (p.off + 1)), kind: p.xfer ? 2 : 0, wait: 0 };
+      if (p.xfer) {
+        const g = LAY.gates[p.fromGate]; a.x = g.x + 8; a.z = LAY.zGate + 1;
+        this.go(a, S.WALK_GATE, [[g.x + 8, 5.5 + p.off], [p.seatX, 5.5 + p.off], [p.seatX, p.seatZ]]);
+      } else {
+        const d = LAY.doors[p.door]; a.x = d.x + (d.station ? 0 : p.off * 5); a.z = d.z + (d.station ? p.off * 3 : 0);
+        this.kpi.arrivals[this.bin15()]++;
+        if (p.bags) { const isl = f.island; this.go(a, S.WALK_DROP, [[LAY.islands[isl].x + p.off * 4, 80 - Math.min(6, this.isl[isl].q.length * 0.14)]]); a.k = isl; }
+        else this.toSecurity(a);
+      }
+      this.pax.push(a);
+    }
+  }
+  // 検査場の選択。従来運用は最寄り、AI 最適化はサイネージで「歩行 + 予測待ち」が最小の検査場へ誘導（一部の旅客は従わない）
+  toSecurity(a) {
+    let best = 0, bd = 1e9;
+    for (let c = 0; c < 3; c++) { const d = Math.abs(LAY.cps[c].x - a.x); if (d < bd) { bd = d; best = c; } }
+    if (this.mode === 1 && a.p.uComply < (this.cp.some(c => c.limit < 99) ? P.ai.complyFault : P.ai.comply)) {
+      let bc = 1e9; const near = best;
+      for (let c = 0; c < 3; c++) {
+        const cp = this.cp[c], lanes = Math.max(0.5, Math.min(cp.open, cp.limit));
+        const cost = Math.abs(LAY.cps[c].x - a.x) / SPD.walk + (cp.q.length + cp.enroute * 0.8) * P.secSvcMean / lanes + (c === near ? -0.8 : 0);
+        if (cost < bc) { bc = cost; best = c; }
+      }
+      if (best !== near) { this.kpi.guided++; this.gd[near * 3 + best]++; }
+    }
+    a.cp = best; this.cp[best].enroute++;
+    const rows = Math.floor(this.cp[best].q.length / 22);
+    this.go(a, S.WALK_SEC, [[a.x + (LAY.cps[best].x - a.x) * 0.5, Math.max(a.z - 6, LAY.zQ + rows * 1.3 + 4)], [LAY.cps[best].x + a.p.off * 10, LAY.zQ + rows * 1.3 + 2.2]]);
+  }
+  stepPax(dt) {
+    const t = this.t, W = this.world;
+    // ---- 自動手荷物預け機 ----
+    for (let i = 0; i < 6; i++) {
+      const is = this.isl[i];
+      for (let k = 0; k < is.free.length && is.q.length; k++) if (is.free[k] <= t) {
+        const a = is.q.shift(), start = a.t0 <= is.free[k] ? is.free[k] : t;
+        is.free[k] = a.tEnd = start + 0.3 + a.p.svcDrop; a.st = S.AT_DROP; a.lane = k;
+        const kp = kioskPos(i, k); a.tx = kp.x; a.tz = kp.z; a.wp = [];
+        this.kpi.dropWaitSum += start - a.t0; this.kpi.dropN++;
+      }
+      for (let j = 0; j < is.q.length; j++) { const a = is.q[j]; dropSlot(i, j, _slot); a.tx = _slot.x; a.tz = _slot.z; }
+    }
+    // ---- 保安検査 ----
+    for (let c = 0; c < 3; c++) {
+      const cp = this.cp[c], n = Math.min(cp.open, cp.limit);
+      for (let j = 0; j < n && cp.q.length; j++) {
+        const l = LANE_ORDER[j]; if (cp.free[l] > t) continue;
+        const a = cp.q.shift(), start = a.t0 <= cp.free[l] ? Math.max(cp.free[l], t - dt) : t;
+        cp.free[l] = start + a.p.svcSec; a.wait = start - a.t0; this.recordSecWait(c, a.wait);
+        a.lane = l; a.spd = 9.5; this.go(a, S.IN_LANE, [[laneX(c, l), LAY.zLaneIn], [laneX(c, l), LAY.zLaneOut]]);
+      }
+      for (let j = 0; j < cp.q.length; j++) { const a = cp.q[j]; secSlot(c, j, _slot); a.tx = _slot.x; a.tz = _slot.z; }
+      const im = this.imm[c];
+      for (let k = 0; k < im.free.length && im.q.length; k++) if (im.free[k] <= t) {
+        const a = im.q.shift(), start = a.t0 <= im.free[k] ? Math.max(im.free[k], t - dt) : t;
+        im.free[k] = a.tEnd = start + a.p.svcImm + 0.12; a.st = S.AT_IMM; a.tx = LAY.cps[c].x + (k - 3) * 2.6; a.tz = LAY.zImm; a.wp = [];
+      }
+      for (let j = 0; j < im.q.length; j++) { const a = im.q[j]; immSlot(c, j, _slot); a.tx = _slot.x; a.tz = _slot.z; }
+    }
+    // ---- 移動と状態遷移 ----
+    const arr = this.pax;
+    for (let i = arr.length - 1; i >= 0; i--) {
+      const a = arr[i]; let dx = a.tx - a.x, dz = a.tz - a.z; const d = Math.hypot(dx, dz), stp = a.spd * dt;
+      let hit = false;
+      if (d <= stp) { a.x = a.tx; a.z = a.tz; hit = true; } else { a.x += dx / d * stp; a.z += dz / d * stp; }
+      if (hit && a.wp && a.wp.length) { const n = a.wp.shift(); a.tx = n[0]; a.tz = n[1]; continue; }
+      if (this.paxEvent(a, hit, t)) { arr[i] = arr[arr.length - 1]; arr.pop(); }
+    }
+  }
+}
+// =====================================================================
+// 43 sim (旅客の状態遷移・搭乗・到着・保安検査レーンの制御)
+// =====================================================================
+Sim.prototype.paxEvent = function (a, hit, t) {
+  switch (a.st) {
+    case S.WALK_DROP: if (hit) { a.st = S.Q_DROP; a.t0 = t; this.isl[a.k].q.push(a); } break;
+    case S.AT_DROP: if (t >= a.tEnd) { this.dropBags(a, a.k, a.lane); this.toSecurity(a); } break;
+    case S.WALK_SEC: if (hit) { const cp = this.cp[a.cp]; cp.enroute--; a.st = S.Q_SEC; a.t0 = t; cp.q.push(a); } break;
+    case S.IN_LANE: if (hit) {
+      a.spd = SPD.walk * (0.86 + 0.14 * (a.p.off + 1));
+      const rows = Math.floor(this.imm[a.cp].q.length / 12);
+      this.go(a, S.WALK_IMM, [[LAY.cps[a.cp].x + a.p.off * 6, LAY.zImm + 3.4 + rows * 1.15]]);
+    } break;
+    case S.WALK_IMM: if (hit) { a.st = S.Q_IMM; a.t0 = t; this.imm[a.cp].q.push(a); } break;
+    case S.AT_IMM: if (t >= a.tEnd) this.go(a, S.WALK_GATE, [[a.x, 10.5], [a.p.seatX, 6 + a.p.off * 1.4], [a.p.seatX, a.p.seatZ]]); break;
+    case S.WALK_GATE: if (hit) {
+      const fs = this.flightState(a.f.id);
+      if (t > a.f.dep - P.gateClose) { fs.missedPax++; this.kpi.missedPax++; return true; }
+      a.st = S.LOUNGE; fs.lounge.push(a);
+    } break;
+    case S.BOARD: if (hit) { this.flightState(a.f.id).boarded++; this.kpi.boarded++; return true; } break;
+    case S.ARR_WALK: if (hit) { a.lvl = 1; a.st = S.CLAIM; a.tEnd = Math.max(t, this.flightState(a.f.id).arrBagT) + 0.6 + 5 * a.u; } break;
+    case S.CLAIM: if (t >= a.tEnd) this.go(a, S.ARR_EXIT, [[a.x * 0.6 - 30, 82], [-76 + a.u * 8, 87]]); break;
+    case S.ARR_EXIT: if (hit) return true; break;
+  }
+  return false;
+};
+
+Sim.prototype.stepFlights = function (dt) {
+  const t = this.t, W = this.world;
+  for (const f of W.flights) {
+    if (t < (f.arr == null ? f.dep - 200 : f.arr) - 1 || t > f.dep + 6) continue;
+    const fs = this.flightState(f.id), g = LAY.gates[f.gate];
+    if (t >= f.dep - P.boardStart && t < f.dep - 1.5 && fs.lounge.length) {
+      fs.credit = Math.min(fs.credit + P.boardRate * dt, 4);
+      while (fs.credit >= 1 && fs.lounge.length) {
+        fs.credit--; const a = fs.lounge.shift();
+        if (g.remote) this.go(a, S.BOARD, [[g.x + 6 + a.p.off, -9], [g.x + 12, LAY.zGate + 0.6]]);     // バスゲート
+        else this.go(a, S.BOARD, [[g.x + 8 + a.p.off, LAY.zGate + 1.5], [g.x + 8, -23], [g.x + 3.4, LAY.standNoseZ - 5.5]]);
+      }
+    }
+    if (f.arr != null && f.paxIn > 0 && t >= f.arr + 4 && !fs.arrDone) {       // 到着旅客（描画するのは約半数）
+      const nArr = Math.round(f.paxIn * 0.5), want = Math.min(nArr, Math.floor((t - f.arr - 4) * 15));
+      while (fs.arrSpawn < want) {
+        const k = fs.arrSpawn++, u = ((k * 7919 + f.id * 104729) % 1000) / 1000, car = (f.gate + (k & 1)) % 2, ang = u * 6.283;
+        const c = BHS.claim[car];
+        const a = { p: { off: u * 2 - 1, xfer: false }, f, x: g.x + 3.4, z: LAY.standNoseZ - 5.5, lvl: 0, st: 0, tx: 0, tz: 0, wp: null, cp: -1, lane: -1, k: car, t0: 0, tEnd: 0, spd: SPD.walk * (0.9 + 0.25 * u), kind: 3, u, wait: 0 };
+        this.go(a, S.ARR_WALK, [[g.x + 8, -23], [g.x + 8, -12.6], [-168 + u * 1.6, -12.6], [-168 + u * 1.6, 58], [-168 + u * 1.6, 66], [c.x + Math.cos(ang) * (10 + 3 * u), c.z + Math.sin(ang) * (7.5 + 3 * u)]]);
+        this.pax.push(a);
+      }
+      if (fs.arrSpawn >= nArr) fs.arrDone = true;
+      if (!fs.arrBagT) { fs.arrBagT = f.arr + 19 + 8 * ((f.id * 37 % 10) / 10); this.spawnArrivalBags(f, fs); }
+    }
+    if (t >= f.dep && !fs.closed) { fs.closed = true; fs.missedPax += fs.lounge.length; this.kpi.missedPax += fs.lounge.length; this.closeFlight(f, fs); }
+  }
+};
+
+// 従来運用の人員計画: 当日朝の便スケジュールから作った 1 時間刻みの固定値（臨時便・当日の変動は反映しない）
+Sim.prototype.roster = function (t, c) {
+  const W = this.world, h = Math.floor(t / 60), key = h * 3 + c;
+  if (W.rosterCache[key] === undefined) {
+    const rate = this.predictSecRate(c, h * 60 + 6, 60, W.fcIsland0, W.fcTotal0);
+    W.rosterCache[key] = clamp(Math.ceil(rate * P.secSvcMean * P.roster[0] + P.roster[1]), 1, LAY.cpLanes);
+  }
+  return W.rosterCache[key];
+};
+// 検査場 c への到着見込み（人/分）。t0〜t0+win 分の平均
+Sim.prototype.predictSecRate = function (c, t0, win, fcI, fcT) {
+  const W = this.world, b0 = Math.floor((t0 - 6 - DAY0) / FC_BIN), nb = Math.max(1, Math.round(win / FC_BIN));
+  fcI = fcI || W.fcIsland; fcT = fcT || W.fcTotal;
+  let s = 0;
+  for (let b = b0; b < b0 + nb; b++) {
+    if (b < 0 || b >= FC_N) continue;
+    s += (fcI[c * 2][b] + fcI[c * 2 + 1][b]) * 0.72;          // 預け入れ後は最寄りの検査場へ
+    s += fcT[b] * 0.28 * [0.17, 0.22, 0.61][c];              // 手荷物なしは入口から最寄りへ
+  }
+  return s / (nb * FC_BIN);
+};
+
+Sim.prototype.controlSecurity = function () {
+  const t = this.t;
+  if (t < this.nextCtl) return;
+  this.nextCtl = t + 1;
+  for (let c = 0; c < 3; c++) {
+    const cp = this.cp[c], nm = LAY.cps[c].name;
+    if (cp.limit < 99 && t >= cp.limitUntil) { cp.limit = 99; this.addLog('scn', `保安検査場 ${nm} の検査機器が復旧しました。`); }
+    while (cp.plan.length && cp.plan[0].t <= t) { const pl = cp.plan.shift(); if (pl.d) cp.extra += pl.d; else cp.target = pl.n; }
+    // 待ちが伸びたときの増員要請（指示から実施まで 20 分）。従来運用はこれだけで対応し、AI 最適化も予測を外したときの保険として使う
+    const base = this.mode === 0 ? this.roster(t, c) : cp.target, pend = cp.plan.filter(pl => pl.d).length;
+    if (cp.q.length > 55 && t - cp.lastCall >= 10 && base + cp.extra + pend < LAY.cpLanes) {
+      cp.lastCall = t; cp.plan.push({ t: t + P.laneLead, d: 1 }); cp.plan.sort((a, b) => a.t - b.t);
+      this.addLog(this.mode ? 'ai' : 'ops', this.mode
+        ? `保安検査場 ${nm} の待ちが予測を超えて ${cp.q.length} 人になったため、応援の要員を要請しました。${hhmm(t + P.laneLead)} にレーンを 1 本増やします。`
+        : `保安検査場 ${nm} の待ちが ${cp.q.length} 人になったため、係員が増員を要請しました。${hhmm(t + P.laneLead)} にレーンを 1 本増やします。`);
+    }
+    if (cp.q.length < 6) { if (t - cp.calmSince > 25 && cp.extra > 0) { cp.extra--; cp.calmSince = t; } } else cp.calmSince = t;
+    cp.open = clamp(base + cp.extra, 1, LAY.cpLanes);
+  }
+  if (this.mode === 1 && Math.floor(t) % 5 === 0) this.aiPlanLanes();
+};
+
+// AI 最適化: 便スケジュールとチェックイン実績から 20〜50 分先の到着を予測し、レーン数を先に決める
+Sim.prototype.aiPlanLanes = function () {
+  const t = this.t, fault = this.cp.some(c => c.limit < 99);
+  const lead = fault ? 10 : P.laneLead, tEff = t + lead;
+  const rate = [0, 1, 2].map(c => this.predictSecRate(c, tEff, 30));
+  const near = [0, 1, 2].map(c => this.predictSecRate(c, t, lead));
+  let R = 0, Q = 0, cap = 0;
+  for (let c = 0; c < 3; c++) { R += rate[c]; const cp = this.cp[c]; Q += cp.q.length + cp.enroute; cap += Math.min(cp.open, cp.limit) / P.secSvcMean; }
+  const backlog = Math.max(0, Q + (near[0] + near[1] + near[2] - cap) * lead);
+  // 要員の上限: 従来運用の人員計画（その時間帯の合計）+ 応援枠。AI は人数を増やさず、時刻と配置を変える
+  const budget = this.roster(tEff, 0) + this.roster(tEff, 1) + this.roster(tEff, 2) + P.ai.extraLanes;
+  let N = clamp(Math.ceil(R * P.secSvcMean * P.ai.margin + backlog / 26), 3, Math.min(15, budget));
+  const n = [1, 1, 1], lim = this.cp.map(c => c.limit < 99 ? c.limit : LAY.cpLanes);
+  for (let k = 3; k < N; k++) {
+    let bi = -1, bv = -1;
+    for (let c = 0; c < 3; c++) { if (n[c] >= lim[c]) continue; const v = (rate[c] + this.cp[c].q.length / 30 + 0.2) / n[c]; if (v > bv) { bv = v; bi = c; } }
+    if (bi < 0) break; n[bi]++;
+  }
+  for (let c = 0; c < 3; c++) {
+    const cp = this.cp[c]; let last = cp.target; for (const pl of cp.plan) if (pl.n !== undefined) last = pl.n;
+    let want = n[c];
+    if (want < last) { cp.downN = (cp.downN || 0) + 1; if (t - cp.lastReq < 15 || cp.downN < 3) continue; want = last - 1; cp.downN = 0; } else cp.downN = 0;   // 減らすのは 3 回続けて余裕があるときだけ
+    if (want === last) continue;
+    if (want > last) cp.lastReq = t;
+    cp.plan.push({ t: tEff, n: want }); cp.plan.sort((a, b) => a.t - b.t);
+    const why = fault && cp.limit >= 99 ? `機器が故障した検査場の要員を移すためです。`
+      : `${hhmm(tEff)} からの 30 分間に 1 時間あたり ${Math.round(rate[c] * 60 / 10) * 10} 人が到着すると予測したためです。`;
+    this.addLog('ai', `保安検査場 ${LAY.cps[c].name} のレーンを ${hhmm(tEff)} に ${last} 本から ${want} 本へ${want > last ? '増やします' : '減らします'}。${why}`);
+  }
+};
+// =====================================================================
+// 44 sim (手荷物 1) : 預け入れ → コレクター → インライン EDS → ソーター投入
+// =====================================================================
+const B = { MOVE: 1, EDS_Q: 2, L2: 3, IND_Q: 4, LOOP: 5, MES_Q: 6, MES: 7, EBS: 8, HOLD: 9, LAT: 10, TRAIN: 11, ARR: 12, CAR: 13, GONE: 99 };
+const NEXT = { EDS_Q: 1, EDS_OUT: 2, INDUCT: 3, MES_Q: 4, EBS_IN: 5, HOLD_IN: 6, LAT_IN: 7, CAR: 8, REMOVE: 9, EBS_OUT: 10 };
+const BY = 0.95;                                     // ベルト上の手荷物の高さ
+const edsSlot = (line, i, out) => {
+  const ex = BHS.edsX[line];
+  if (i < 3) { out.x = ex; out.z = BHS.zEdsIn + 0.6 + i * 1.05; }
+  else { const j = i - 3, side = j & 1 ? 1 : -1; out.x = ex + side * (1.4 + (j >> 1) * 1.38); out.z = 50 + side * 0.7; }
+  return out;
+};
+
+Sim.prototype.initBags = function () {
+  this.bags = []; this.bagSeq = 0; this.xbPtr = 0; this.loopN = 0;
+  this.eds = [0, 1, 2].map(() => ({ q: [], free: 0, indQ: [], n: 0 }));
+  this.mes = { q: [], free: new Float64Array(P.mesStations) };
+  this.ebs = { cells: new Array(BHS.ebs.cols * BHS.ebs.rows * BHS.ebs.levels).fill(null), n: 0 };
+  this.holdN = 0; this.lat = BHS.lateralX.map(() => ({ f: -1, n: 0, res: 0, slots: [] }));
+  this.tugs = Array.from({ length: P.tugs }, (_, i) => ({ id: i, st: 0, x: -160 + i * 4.6, z: -9, hx: 1, hz: 0, path: null, s: 0, len: 0, f: null, bags: [], tEnd: 0, kind: 0 }));
+  this.tugReq = [];
+};
+
+Sim.prototype.newBag = function (f, u, x, y, z, xfer, uid) {
+  const b = { id: this.bagSeq++, uid, f, u, x, y, z, st: B.MOVE, wp: null, next: 0, spd: SPD.belt, t0: this.t, store: 0, tS: 0,
+    line: 0, read: false, mis: false, missed: false, dest: 0, uDest: -1, uLoop: 0, dist: 0, laps: 0, lat: -1, slot: -1, tEnd: 0, c: 0, xfer, tug: null, k: 0, tRoute: 0 };
+  this.bags.push(b); const fs = this.flightState(f.id); fs.bagsIn++; this.kpi.bagsIn++; this.kpi.bagArr[this.bin15()]++;
+  return b;
+};
+// EDS ラインの選択。
+// 従来運用: チェックイン島ごとの固定経路。待ちが 60 個を超えたら、待ちの少ない別ラインへあふれさせる（しきい値による固定ルール）。
+//           ラインが停止したときは、固定の迂回先（隣のライン）へ流す。
+// AI 最適化: 手荷物ごとに、待ち個数と搬送距離から所要時間が最短のラインを選ぶ。
+Sim.prototype.pickEds = function (x, natural) {
+  // 停止は、経路を切り替えるまで（従来運用 = 係員の操作まで 10 分、AI 最適化 = 自動検知まで 1.5 分）は反映されない
+  const down = this.t >= this.scn.edsSwitchAt ? this.scn.edsDown : -1, load = l => this.eds[l].q.length + this.eds[l].n;
+  if (this.mode === 0) {
+    let line = natural;
+    if (natural === down) line = (natural + 1) % 3;
+    if (load(line) > P.base.edsOverflow) { let best = line; for (let l = 0; l < 3; l++) if (l !== down && load(l) < load(best) - 12) best = l; line = best; }
+    return line;
+  }
+  let best = natural === down ? (natural + 1) % 3 : natural, bc = 1e9;
+  for (let l = 0; l < 3; l++) {
+    if (l === down) continue;
+    const cost = load(l) * P.edsSvc + Math.abs(BHS.edsX[l] - x) / SPD.belt + (l === natural ? -0.25 : 0);
+    if (cost < bc) { bc = cost; best = l; }
+  }
+  if (best !== natural) this.kpi.rebalanced++;
+  return best;
+};
+Sim.prototype.dropBags = function (a, isl, k) {
+  const kp = kioskPos(isl, k), ix = LAY.islands[isl].x, f = a.f;
+  for (let i = 0; i < a.p.bags; i++) {
+    const b = this.newBag(f, a.p.bagU[i], kp.x + (k % 2 ? -1.6 : 1.6), YU + BY, kp.z + i * 0.8, false, a.p.id * 4 + i);
+    const line = b.line = this.pickEds(ix, isl >> 1), ex = BHS.edsX[line], zc = ex >= ix ? 50.7 : 49.3;
+    this.eds[line].n++;
+    b.wp = [[ix, YU + BY, kp.z + i * 0.8], [ix, YU + BY, LAY.islands[isl].z0 - 0.5], [ix, BY, zc + 1.2], [ix, BY, zc], [ex + (ex >= ix ? -1 : 1), BY, zc], [ex, BY, BHS.zEdsIn + 3]];
+    b.next = NEXT.EDS_Q;
+  }
+};
+// 乗り継ぎ手荷物: 到着機から降ろした手荷物を東側の投入口からソーターへ入れる（EDS は出発地で検査済みの扱い）
+Sim.prototype.spawnXferBags = function () {
+  const W = this.world;
+  while (this.xbPtr < W.xbags.length && W.xbags[this.xbPtr].t <= this.t) {
+    const xb = W.xbags[this.xbPtr++], f = W.flights[xb.f];
+    if (f.dep <= this.t) continue;
+    if (xb.uid === undefined) xb.uid = 4000000 + (W.xbSeq = (W.xbSeq || 0) + 1);
+    const b = this.newBag(f, xb, BHS.xferIn.x + 6, BY, BHS.xferIn.z + 8, true, xb.uid);
+    b.wp = [[BHS.xferIn.x, BY, BHS.xferIn.z + 8], [BHS.xferIn.x, BY, BHS.xferIn.z], [BHS.loop.a - 4, BY, BHS.loop.zc + BHS.loop.r + 0.6]]; b.next = NEXT.INDUCT; b.line = 3;
+  }
+};
+Sim.prototype.moveBag = function (b, dt) {
+  let stp = b.spd * dt;
+  while (b.wp && b.wp.length) {
+    const w = b.wp[0], dx = w[0] - b.x, dy = w[1] - b.y, dz = w[2] - b.z, d = Math.hypot(dx, dy, dz);
+    if (d > stp) { const k = stp / d; b.x += dx * k; b.y += dy * k; b.z += dz * k; return false; }
+    b.x = w[0]; b.y = w[1]; b.z = w[2]; stp -= d; b.wp.shift();
+  }
+  return true;
+};
+
+Sim.prototype.stepEds = function (dt) {
+  const t = this.t;
+  if (this.scn.edsDown >= 0 && t >= this.scn.edsUntil) { this.addLog('scn', `インライン EDS ${this.scn.edsDown + 1} 号機が復旧しました。`); this.scn.edsDown = -1; }
+  for (let l = 0; l < 3; l++) {
+    const e = this.eds[l];
+    if (l !== this.scn.edsDown && e.q.length && e.free <= t && e.indQ.length < 8) {
+      let qi = 0;
+      if (this.mode === 1 && e.q.length > 10) {       // AI 最適化: 滞留時は合流部で出発の早い便の手荷物を先に通す
+        const lim = Math.min(e.q.length, 60); for (let i = 1; i < lim; i++) if (e.q[i].f.dep < e.q[qi].f.dep - 12) qi = i;
+        if (qi) this.kpi.prioritized++;
+      }
+      const b = qi ? e.q.splice(qi, 1)[0] : e.q.shift(), start = b.tS <= e.free ? Math.max(e.free, t - dt) : t;
+      e.free = start + P.edsSvc;
+      const ex = BHS.edsX[l]; b.st = B.MOVE; b.spd = SPD.belt; b.wp = [[ex, BY, BHS.zEdsIn], [ex, BY, BHS.zEdsOut]]; b.next = NEXT.EDS_OUT;
+    }
+    for (let i = 0; i < e.q.length; i++) { const b = e.q[i]; edsSlot(l, i, _slot); b.x += (_slot.x - b.x) * Math.min(1, dt * 14); b.z += (_slot.z - b.z) * Math.min(1, dt * 14); b.c = i > 18 ? 1 : 0; }
+    // ソーターへの投入（トレイに空きがあるときだけ）
+    while (e.indQ.length && this.loopN < P.loopCap) { const b = e.indQ.shift(); this.induct(b, BHS.uEds[l]); }
+    for (let i = 0; i < e.indQ.length; i++) { const b = e.indQ[i]; b.x = BHS.edsX[l]; b.z = BHS.loop.zc + BHS.loop.r + 1 + i * 0.6; }
+  }
+};
+
+// 手荷物が経路の終点に着いたときの処理
+Sim.prototype.bagArrive = function (b) {
+  const t = this.t, e = this.eds[b.line];
+  switch (b.next) {
+    case NEXT.EDS_Q: b.st = B.EDS_Q; b.tS = t; e.q.push(b); break;
+    case NEXT.EDS_OUT: {
+      const ex = BHS.edsX[b.line], u = b.u.uEds;
+      if (u < P.edsL3 + P.edsL2) {                    // 画像判定（Level 2）/ 開披検査（Level 3）
+        b.st = B.L2; b.tEnd = t + (u < P.edsL3 ? P.edsL3Time : P.edsL2Time); b.x = ex + 3.2 + (b.id % 4) * 0.9; b.z = BHS.zEdsOut - 1 - ((b.id >> 2) % 3) * 0.9; b.c = 1;
+      } else { b.wp = [[ex, BY, BHS.loop.zc + BHS.loop.r + 0.6]]; b.next = NEXT.INDUCT; }
+      break;
+    }
+    case NEXT.INDUCT:
+      if (b.line < 3) { e.n--; e.indQ.push(b); b.st = B.IND_Q; }
+      else if (this.loopN < P.loopCap) this.induct(b, BHS.uXfer); else { b.wp = [[b.x, BY, b.z]]; }
+      break;
+    default: this.bagArrive2(b);
+  }
+};
+// =====================================================================
+// 45 sim (手荷物 2) : 高速仕分け機（ループ）・手作業コード入力・EBS・仮置き
+// =====================================================================
+const D = { NONE: 0, LAT: 1, MES: 2, EBS: 3, HOLD: 4 };
+const ebsCell = (i, out) => {
+  const e = BHS.ebs, per = e.cols * e.rows, lv = Math.floor(i / per), r = i % per, c = r % e.cols, row = Math.floor(r / e.cols);
+  out.x = e.x1 - 3 - c * ((e.x1 - e.x0 - 6) / (e.cols - 1)); out.z = e.z0 + 2 + row * ((e.z1 - e.z0 - 4) / (e.rows - 1)); out.y = 0.7 + lv * 1.7;
+  if (Math.abs(out.z - 26) < 1.6) out.z += out.z < 26 ? -1.6 : 1.6;      // 中央通路を空ける
+  return out;
+};
+const holdSlot = (i, out) => { const h = BHS.hold; out.x = h.x0 + 2 + (i % 20) * 1.9; out.z = h.z0 + 1.5 + (Math.floor(i / 20) % 6) * 1.7; return out; };
+const latSlot = (k, i, out) => { out.x = BHS.lateralX[k] + ((i % 3) - 1) * 1.14; out.z = BHS.zLat1 - 0.8 + Math.floor(i / 3) * 1.06; return out; };
+const _c = { x: 0, y: 0, z: 0 };
+
+Sim.prototype.induct = function (b, u) {
+  b.st = B.LOOP; b.uLoop = u; b.dist = 0; b.laps = 0; b.y = BY + 0.3; this.loopN++;
+  if (!b.read && !b.tried) {                        // 投入時のタグ読取（従来運用 = バーコード、AI 最適化 = RFID）
+    b.tried = true;
+    if (b.u.uRead < (this.mode ? P.readRfid : P.readBarcode)) { b.read = true; b.mis = b.u.uMis < (this.mode ? P.missortRfid : P.missortBarcode); }
+    else this.kpi.noRead++;
+    this.kpi.reads++;
+  }
+  this.route(b);
+};
+Sim.prototype.route = function (b) {
+  const t = this.t, f = b.f, fs = this.flightState(f.id);
+  b.tRoute = t + 0.5;
+  if (!b.read) { b.dest = D.MES; b.uDest = BHS.uMes; b.c = 2; return; }
+  if (b.missed || fs.closed || fs.finalSent) { b.missed = true; b.dest = D.HOLD; b.uDest = BHS.uMes; b.c = 2; return; }
+  if (fs.opened) {
+    const k = b.mis ? (fs.lat + 1) % 12 : fs.lat, Lt = this.lat[k];
+    if (b.mis || Lt.n + Lt.res < P.latCap) { b.dest = D.LAT; b.lat = k; b.uDest = BHS.uLat[k]; if (!b.mis) Lt.res++; b.c = b.mis ? 2 : 0; return; }
+    b.dest = D.NONE; b.c = 1; return;                // ラテラルが満杯 → 周回して待つ
+  }
+  if ((this.mode === 1 || f.dep - t > 150) && this.ebs.n < this.ebs.cells.length) { b.dest = D.EBS; b.uDest = BHS.uEbs; b.c = 0; return; }
+  if (b.laps >= P.base.holdAfterLaps) { b.dest = D.HOLD; b.uDest = BHS.uMes; b.c = 1; return; }
+  b.dest = D.NONE; b.c = 1;                          // 早すぎる手荷物 → 周回
+};
+Sim.prototype.leaveLoop = function (b) {
+  this.loopN--; b.st = B.MOVE; b.y = BY; const lp = BHS.loop, fs = this.flightState(b.f.id);
+  if (b.dest === D.LAT) {
+    b.spd = SPD.chute; const Lt = this.lat[b.lat]; latSlot(b.lat, Math.min(Lt.n + Lt.res, P.latCap + 5), _c);
+    b.wp = [[BHS.lateralX[b.lat], BY, BHS.zLat0 + 1], [_c.x, BY * 0.7, Math.min(_c.z + 1, BHS.zLat0)]]; b.next = NEXT.LAT_IN;
+  } else if (b.dest === D.MES) { b.spd = SPD.belt; b.wp = [[lp.a + lp.r + 3, BY, lp.zc]]; b.next = NEXT.MES_Q; }
+  else if (b.dest === D.EBS) {
+    let ci = this.ebs.cells.indexOf(null); if (ci < 0) ci = 0;
+    this.ebs.cells[ci] = b; this.ebs.n++; b.cell = ci; fs.ebsN = (fs.ebsN || 0) + 1; ebsCell(ci, _c); b.spd = SPD.belt * 1.3;
+    b.wp = [[-lp.a - lp.r - 4, BY, lp.zc], [_c.x, BY, lp.zc], [_c.x, _c.y, _c.z]]; b.next = NEXT.EBS_IN;
+  } else { holdSlot(this.holdN++, _c); b.spd = SPD.belt * 0.6; b.wp = [[lp.a + lp.r + 3, BY, lp.zc - 4], [_c.x, 0.5, _c.z]]; b.next = NEXT.HOLD_IN; }
+};
+
+Sim.prototype.bagArrive2 = function (b) {
+  const t = this.t, lp = BHS.loop;
+  switch (b.next) {
+    case NEXT.MES_Q: b.st = B.MES_Q; b.tS = t; this.mes.q.push(b); break;
+    case NEXT.EBS_IN: b.st = B.EBS; b.tS = t; b.c = 3; break;
+    case NEXT.HOLD_IN: b.st = B.HOLD; b.tS = t; b.tEnd = t + 12; break;
+    case NEXT.EBS_OUT: if (this.loopN < P.loopCap) this.induct(b, b.k ? BHS.uMes : BHS.uEbs); else b.wp = [[b.x, b.y, b.z]]; break;
+    case NEXT.LAT_IN: this.latArrive(b); break;
+    case NEXT.CAR: b.st = B.CAR; b.tEnd = t + 1.5 + 7 * b.u; b.k = Math.atan2(b.z - BHS.claim[b.lat].z, b.x - BHS.claim[b.lat].x); break;
+    case NEXT.REMOVE: b.st = B.GONE; break;
+  }
+};
+
+Sim.prototype.stepBags = function (dt) {
+  const t = this.t, L = BHS.loop.L, arr = this.bags, stepL = SPD.loop * dt;
+  // ---- 手作業コード入力（読取不良の手荷物）----
+  const m = this.mes;
+  for (let k = 0; k < m.free.length && m.q.length; k++) if (m.free[k] <= t) {
+    const b = m.q.shift(), start = b.tS <= m.free[k] ? Math.max(m.free[k], t - dt) : t;
+    m.free[k] = b.tEnd = start + P.mesSvc; b.st = B.MES; b.x = BHS.mes.x; b.z = BHS.mes.z + (k ? 2.2 : -2.2);
+  }
+  for (let i = 0; i < m.q.length; i++) { const b = m.q[i]; b.x = BHS.mes.x - 3 - (i % 8) * 1.38; b.z = BHS.mes.z - 1.1 + Math.floor(i / 8) * 1.1; }
+  for (let i = arr.length - 1; i >= 0; i--) {
+    const b = arr[i];
+    switch (b.st) {
+      case B.MOVE: if (this.moveBag(b, dt)) this.bagArrive(b); break;
+      case B.LOOP: {
+        const u0 = b.uLoop, u1 = u0 + stepL; b.dist += stepL;
+        if (b.dist >= (b.laps + 1) * L) { b.laps++; if (b.dest === D.NONE) this.kpi.recircLaps++; }
+        if (b.dest !== D.NONE && ((b.uDest > u0 && b.uDest <= u1) || (b.uDest + L > u0 && b.uDest + L <= u1))) { loopPos(b.uDest, b); this.leaveLoop(b); break; }
+        if (b.dest === D.NONE && t >= b.tRoute) this.route(b);
+        b.uLoop = u1 >= L ? u1 - L : u1; loopPos(b.uLoop, b);
+        break;
+      }
+      case B.L2: if (t >= b.tEnd) { b.st = B.MOVE; b.c = 0; b.spd = SPD.belt; b.wp = [[BHS.edsX[b.line], BY, BHS.zEdsOut - 1], [BHS.edsX[b.line], BY, BHS.loop.zc + BHS.loop.r + 0.6]]; b.next = NEXT.INDUCT; } break;
+      case B.MES: if (t >= b.tEnd) { b.read = true; b.c = 0; b.st = B.MOVE; b.k = 1; b.spd = SPD.belt; b.wp = [[BHS.loop.a + BHS.loop.r + 0.5, BY, BHS.loop.zc]]; b.next = NEXT.EBS_OUT; } break;
+      case B.HOLD:
+        if (b.missed) { if (t >= b.tEnd) { b.st = B.GONE; this.holdN = Math.max(0, this.holdN - 1); } }
+        else if (t >= b.f.dep - P.base.latOpen + 3 + (b.id % 5)) {      // ラテラルが開いたあと、係員が仮置き場から戻す
+          if (b.u.uHold < P.base.holdMis) { b.missed = true; b.c = 2; b.tEnd = b.f.dep + 10; this.kpi.holdLost++; }
+          else { b.store += t - b.tS; b.st = B.MOVE; b.k = 1; b.spd = 16; b.c = 1; b.wp = [[BHS.loop.a + BHS.loop.r + 3, BY, BHS.loop.zc - 4], [BHS.loop.a + BHS.loop.r + 0.5, BY, BHS.loop.zc]]; b.next = NEXT.EBS_OUT; this.holdN = Math.max(0, this.holdN - 1); }
+        }
+        break;
+      case B.CAR: { const c = BHS.claim[b.lat]; b.k += dt * 2.2; b.x = c.x + Math.cos(b.k) * 6.2; b.z = c.z + Math.sin(b.k) * 3.6; if (t >= b.tEnd) b.st = B.GONE; break; }
+    }
+    if (b.st === B.GONE) { arr[i] = arr[arr.length - 1]; arr.pop(); }
+  }
+  this.stepEbs();
+};
+
+// EBS の放出。従来運用: ラテラルが開いた時点でその便の全量をまとめて出す。
+// AI 最適化: ドーリーが着いたあと（遅くとも出発 80 分前）、ラテラルの空きに合わせて出発の早い便から出す。
+Sim.prototype.stepEbs = function () {
+  const t = this.t;
+  if (t < (this.nextEbs || 0)) return;
+  this.nextEbs = t + 0.25;
+  let budget = 8, cells = this.ebs.cells, pick = [];
+  for (let i = 0; i < cells.length; i++) {
+    const b = cells[i]; if (!b || b.st !== B.EBS) continue;
+    const fs = this.flightState(b.f.id);
+    if (fs.closed || fs.finalSent) { b.missed = true; pick.push(b); continue; }
+    if (!fs.opened) continue;
+    if (this.mode === 1) { const Lt = this.lat[fs.lat]; if (!(fs.train && fs.train.st === 2) && t < b.f.dep - P.ai.ebsRelease) continue; if (Lt.n + Lt.res + (fs.ebsOut || 0) > P.latCap - 8) continue; }
+    pick.push(b);
+  }
+  if (this.mode === 1) pick.sort((a, b) => a.f.dep - b.f.dep);
+  for (const b of pick) {
+    if (budget-- <= 0) break;
+    const fs = this.flightState(b.f.id); fs.ebsOut = (fs.ebsOut || 0) + 1; setTimeoutSim(this, 2.5, () => { fs.ebsOut--; });
+    cells[b.cell] = null; this.ebs.n--; fs.ebsN--; b.store += t - b.tS; b.st = B.MOVE; b.k = 0; b.c = 0; b.spd = SPD.belt * 1.3;
+    b.wp = [[b.x, BY, BHS.loop.zc], [-BHS.loop.a - BHS.loop.r - 0.5, BY, BHS.loop.zc]]; b.next = NEXT.EBS_OUT;
+    if (!b.missed) this.kpi.ebsOut++;
+  }
+};
+function setTimeoutSim(sim, d, fn) { (sim.timers || (sim.timers = [])).push({ t: sim.t + d, fn }); }
+// =====================================================================
+// 46 sim (手荷物 3) : メイクアップ・トーイングトラクター・搭載・到着手荷物
+// トラクターの状態: 0 待機 / 1 ラテラルへ移動 / 2 積み付け中 / 3 機側へ移動 / 4 搭載中 / 5 帰還 / 6 到着便（取り降ろし）
+// =====================================================================
+const standSpot = g => [LAY.gates[g].sx - 6.5, -52];
+function setTugPath(tug, pts) {
+  tug.path = pts; tug.s = 0; tug.seg = [0]; let L = 0;
+  for (let i = 1; i < pts.length; i++) { L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); tug.seg.push(L); }
+  tug.len = L;
+}
+// 経路上の位置（back = 先頭からの後退距離）。ドーリーの位置にも使う
+function tugPose(tug, back, out) {
+  const p = tug.path; if (!p) { out.x = tug.x - back * tug.hx; out.z = tug.z - back * tug.hz; out.hx = tug.hx; out.hz = tug.hz; return out; }
+  let s = tug.s - back, i = 1;
+  if (s < 0) { const dx = p[1][0] - p[0][0], dz = p[1][1] - p[0][1], d = Math.hypot(dx, dz) || 1; out.x = p[0][0] + dx / d * s; out.z = p[0][1] + dz / d * s; out.hx = dx / d; out.hz = dz / d; return out; }
+  while (i < p.length - 1 && tug.seg[i] < s) i++;
+  const a = p[i - 1], b = p[i], l = tug.seg[i] - tug.seg[i - 1] || 1, k = clamp((s - tug.seg[i - 1]) / l, 0, 1);
+  out.x = a[0] + (b[0] - a[0]) * k; out.z = a[1] + (b[1] - a[1]) * k; out.hx = (b[0] - a[0]) / l; out.hz = (b[1] - a[1]) / l; return out;
+}
+const _tp = { x: 0, z: 0, hx: 0, hz: 0 };
+
+Sim.prototype.latArrive = function (b) {
+  const t = this.t, Lt = this.lat[b.lat], fs = this.flightState(b.f.id);
+  if (b.mis) {                                        // ミスソート: 積み付け時の照合で見つけ、係員が正しいラテラルへ運ぶ
+    b.mis = false; this.kpi.missort++; b.c = 2; b.lat = fs.lat; b.spd = 5;
+    if (fs.opened && !fs.finalSent) { this.lat[fs.lat].res++; b.wp = [[b.x, 0.5, 1], [BHS.lateralX[fs.lat], 0.5, 1], [BHS.lateralX[fs.lat], 0.6, BHS.zLat1]]; b.st = B.MOVE; b.next = NEXT.LAT_IN; }
+    else { b.missed = true; b.st = B.GONE; }
+    return;
+  }
+  Lt.res = Math.max(0, Lt.res - 1);
+  if (fs.closed || Lt.f !== b.f.id) { b.missed = true; b.st = B.GONE; return; }
+  b.st = B.LAT; b.slot = Lt.n++; Lt.slots.push(b);
+  this.kpi.bagTimeSum += t - b.t0 - b.store; this.kpi.bagTimeN++; this.kpi.bagSeries[this.bin15()] += t - b.t0 - b.store; this.kpi.bagSeriesN[this.bin15()]++;
+};
+
+Sim.prototype.stepMakeup = function (dt) {
+  const t = this.t, W = this.world, ai = this.mode === 1;
+  for (const f of W.flights) {
+    if (t < f.dep - 125 || t > f.dep) continue;
+    const fs = this.flightState(f.id); if (fs.closed) continue;
+    const k = f.lateralFix, Lt = this.lat[k];
+    // ラテラルを開く。従来運用 = 出発 120 分前の固定時刻、AI 最適化 = ドーリーが着いた時点（それまで EBS で保管）
+    if (!fs.opened && Lt.f < 0 && t >= f.dep - 120 && (!ai || (fs.train && fs.train.st === 2))) {
+      Lt.f = f.id; fs.lat = k; fs.opened = true;
+      if (ai) { let n = 0; for (const b of this.ebs.cells) if (b && b.f === f) n++; if (n >= 8) this.addLog('ai', `${f.code} 便の手荷物 ${n} 個を EBS から順に放出します。ドーリーがラテラル ${k + 1} に着いたためです。`); }
+    }
+    if (!fs.train && !fs.req && !fs.finalSent && (Lt.f < 0 || Lt.f === f.id)) {
+      const full = this.ebs.n > this.ebs.cells.length * 0.82;
+      // AI 最適化: 予約数から見込んだ個数で、積み付けに要る時間を逆算して最初のドーリーを呼ぶ
+      const expBags = f.paxOut * 0.73 + f.xb.length, lead = Math.max(76, 30 + expBags / P.loadRate * 1.25 + 8 * Math.ceil(expBags / P.trainCap));
+      const want = ai ? (t >= f.dep - lead || (t >= f.dep - 118 && ((fs.ebsN || 0) >= 96 || (full && (fs.ebsN || 0) >= 30)))) : t >= f.dep - 97;
+      if (want) { fs.req = true; this.tugReq.push({ f, t }); }
+    }
+    const tug = fs.train;
+    if (tug && tug.st === 2) {
+      // 積み付け
+      // AI 最適化: 残りの個数が締切に間に合わない見込みのときは、手の空いた要員を回して積み付けを速める
+      let rate = P.loadRate;
+      if (ai) { const left = fs.bagsIn - fs.bagsLoaded - fs.onWay - tug.bags.length - fs.lostN, tLeft = f.dep - 24 - t; if (left > 20 && left / Math.max(2, tLeft) > P.loadRate * 0.8) { rate = P.loadRate * 1.5; if (!fs.boosted) { fs.boosted = true; this.addLog('ai', `${f.code} 便のラテラル ${k + 1} に積み付けの要員を追加しました。残り ${left} 個が、最終のドーリーの時刻に間に合わない見込みのためです。`); } } }
+      fs.credit2 = Math.min((fs.credit2 || 0) + rate * dt, 3);
+      while (fs.credit2 >= 1 && Lt.slots.length && tug.bags.length < P.trainCap) { fs.credit2--; const b = Lt.slots.shift(); Lt.n--; b.st = B.TRAIN; b.tug = tug; b.slot = tug.bags.length; tug.bags.push(b); }
+      for (let i = 0; i < Lt.slots.length; i++) { const b = Lt.slots[i]; latSlot(k, i, _c); b.x += (_c.x - b.x) * Math.min(1, dt * 10); b.z += (_c.z - b.z) * Math.min(1, dt * 10); b.y = 0.6; }
+      // 出発の判断
+      let n = tug.bags.length, out = fs.bagsIn - fs.bagsLoaded - fs.onWay - n - fs.lostN;       // まだ届いていない個数
+      if (ai) for (const xb of f.xb) if (xb.t > t) out++;                                       // 到着便から届く予定の乗り継ぎ手荷物も数える
+      let leave = false, final = false;
+      if (ai) {
+        const drive = (Math.abs(tug.x - 5 - standSpot(f.gate)[0]) + 52) / SPD.tug + 0.4;
+        const last = f.dep - P.holdClose - drive - (n + 3) / P.acLoadRate;                          // 搭載に間に合う最終時刻を、走行距離と積んだ個数から逆算する
+        if (t >= last) leave = final = true;
+        else if (t >= f.dep - 26 && out <= 0 && t > f.dep - P.bagDropClose + 4) leave = final = true; // 追跡上、残りが無ければ早く出す
+        else if (n >= P.trainCap) leave = true;                                                       // 途中の便は満載になってから出す
+      } else {
+        if (t >= f.dep - P.base.final && (Lt.slots.length === 0 || t >= f.dep - 17)) leave = final = true;   // 固定の最終時刻。ラテラルに残りがあれば積み切る
+        else if (n >= P.trainCap || (fs.trainsSent === 0 && t >= f.dep - P.base.train1)) leave = true;
+      }
+      if (leave && (n > 0 || final)) {
+        fs.trainsSent++; fs.onWay += n; fs.train = null; if (final) fs.finalSent = true;
+        const sp = standSpot(f.gate); tug.st = 3; setTugPath(tug, [[tug.x, tug.z], [tug.x - 5, -5], [tug.x - 5, BHS.zRoad], [sp[0], BHS.zRoad], sp]);
+        if (final && ai && n > 0 && t > f.dep - 24) this.addLog('ai', `${f.code} 便の最終のドーリーを ${hhmm(t)} に出しました（手荷物 ${n} 個）。貨物室を閉める ${hhmm(f.dep - P.holdClose)} までに搭載できる最終の時刻を、走行距離と個数から逆算したためです。`);
+      }
+    }
+  }
+  // ---- 配車。従来運用 = 要請順、AI 最適化 = 出発の早い便を優先し、近いトラクターを選ぶ ----
+  if (this.tugReq.length) {
+    if (ai) this.tugReq.sort((a, b) => a.f.dep - b.f.dep);
+    for (let r = 0; r < this.tugReq.length; r++) {
+      const rq = this.tugReq[r], lx = BHS.lateralX[rq.f.lateralFix]; let best = null, bd = 1e9;
+      for (const tug of this.tugs) { if (tug.st !== 0 && tug.st !== 5) continue; const d = Math.abs(tug.x - lx) + Math.abs(tug.z + 5); if (d < bd) { bd = d; best = tug; if (!ai) break; } }
+      if (!best) break;
+      best.st = 1; best.f = rq.f; best.bags = []; setTugPath(best, [[best.x, best.z], [best.x, BHS.zRoad], [lx + 13, BHS.zRoad], [lx + 13, -5], [lx - 1.5, -5]]);
+      this.flightState(rq.f.id).tugWait = this.t - rq.t; this.kpi.tugWaitSum += this.t - rq.t; this.kpi.tugWaitN++;
+      this.tugReq.splice(r--, 1);
+    }
+  }
+  // ---- トラクターの移動 ----
+  for (const list of [this.tugs, this.arrTugs]) for (let i = list.length - 1; i >= 0; i--) {
+    const tug = list[i];
+    if (tug.path) {
+      if (t >= tug.tEnd) tug.s = Math.min(tug.len, tug.s + SPD.tug * dt);
+      tugPose(tug, 0, _tp); tug.x = _tp.x; tug.z = _tp.z; tug.hx = _tp.hx; tug.hz = _tp.hz;
+      if (tug.s >= tug.len) this.tugArrive(tug, list, i);
+    } else if (tug.st === 4) {                        // 機側で搭載
+      const fs = this.flightState(tug.f.id); tug.credit = Math.min((tug.credit || 0) + P.acLoadRate * dt, 3);
+      while (tug.credit >= 1 && tug.bags.length) {
+        tug.credit--; const b = tug.bags.pop(); b.st = B.GONE; fs.onWay--;
+        if (t <= tug.f.dep - P.holdClose + 0.01 && !fs.closed) { fs.bagsLoaded++; this.kpi.loaded++; this.kpi.loadSeries[this.bin15()]++; this.kpi.loadPerMin[Math.min(DAY1, t | 0)]++; } else fs.lostN++;
+      }
+      if (!tug.bags.length) { tug.st = 5; tug.f = null; const px = -160 + tug.id * 4.6; setTugPath(tug, [[tug.x, tug.z], [tug.x, BHS.zRoad], [px, BHS.zRoad], [px, -9]]); }
+    } else if (tug.st === 6) {                        // 到着手荷物をベルトへ降ろす
+      tug.credit = Math.min((tug.credit || 0) + 14 * dt, 3);
+      while (tug.credit >= 1 && tug.bags.length) {
+        tug.credit--; const b = tug.bags.pop(), c = BHS.claim[b.lat]; b.st = B.MOVE; b.spd = SPD.belt; b.next = NEXT.CAR;
+        b.wp = [[-169, BY, -4], [-169, BY, 62], [c.x, BY, 62], [c.x, BY, c.z - 3.6]];
+      }
+      if (!tug.bags.length) { tug.st = 7; setTugPath(tug, [[tug.x, tug.z], [-150, BHS.zRoad], [-190, BHS.zRoad - 30]]); }
+    }
+    for (let j = 0; j < tug.bags.length; j++) {       // ドーリー上の手荷物の位置
+      const b = tug.bags[j], d = j % 4, r = (j >> 2);
+      tugPose(tug, 3.6 + d * 3.3 + ((r % 3) - 1) * 0.8, _tp);
+      b.x = _tp.x - _tp.hz * ((((r / 3) | 0) % 2) - 0.5) * 0.9; b.z = _tp.z + _tp.hx * ((((r / 3) | 0) % 2) - 0.5) * 0.9; b.y = 0.95 + (((r / 6) | 0) % 5) * 0.55;
+    }
+  }
+};
+Sim.prototype.tugArrive = function (tug, list, i) {
+  tug.path = null;
+  if (tug.st === 1) { tug.st = 2; const fs = this.flightState(tug.f.id); fs.train = tug; fs.req = false; tug.hx = -1; tug.hz = 0; }
+  else if (tug.st === 3) { tug.st = 4; }
+  else if (tug.st === 5) { tug.st = 0; tug.hx = 1; tug.hz = 0; }
+  else if (tug.st === 8) { tug.st = 6; }
+  else if (tug.st === 7) { list.splice(i, 1); }
+};
+// =====================================================================
+// 47 sim (計測・シナリオ・1 ステップ) : 画面の数値はすべてここで数えた実測値
+// =====================================================================
+const NB = Math.ceil((DAY1 - DAY0) / 15);
+Sim.prototype.bin15 = function () { return clamp(Math.floor((this.t - DAY0) / 15), 0, NB - 1); };
+Sim.prototype.initKpi = function () {
+  const z = () => new Float32Array(NB);
+  this.kpi = { arrivals: z(), bagArr: z(), waitSum: z(), waitN: z(), bagSeries: z(), bagSeriesN: z(), loadSeries: z(), missSeries: z(), closedSeries: z(), laneSeries: z(), qMaxSeries: z(), flightSeries: z(), cleanSeries: z(),
+    secSum: 0, secN: 0, secMax: 0, maxQ: 0, maxQt: 0, laneMin: 0, dropWaitSum: 0, dropN: 0, guided: 0, boarded: 0, missedPax: 0,
+    bagsIn: 0, loaded: 0, missedBags: 0, closedBags: 0, closedFlights: 0, cleanFlights: 0, bagTimeSum: 0, bagTimeN: 0,
+    noRead: 0, reads: 0, missort: 0, prioritized: 0, recircLaps: 0, holdLost: 0, ebsOut: 0, rebalanced: 0, tugWaitSum: 0, tugWaitN: 0,
+    secPerMin: new Uint16Array(DAY1 + 2), loadPerMin: new Uint16Array(DAY1 + 2) };
+  this.gd = new Int32Array(9); this.gdLast = new Int32Array(9); this.rebLast = 0; this.nextReport = DAY0 + 10; this.arrTugs = []; this.timers = [];
+};
+Sim.prototype.recordSecWait = function (c, w) {
+  const k = this.kpi, b = this.bin15();
+  k.secSum += w; k.secN++; if (w > k.secMax) k.secMax = w; k.waitSum[b] += w; k.waitN[b]++; k.secPerMin[Math.min(DAY1, this.t | 0)]++;
+  const cp = this.cp[c]; cp.served++; cp.waitEma += (w - cp.waitEma) * 0.08;
+};
+Sim.prototype.tickKpi = function (dt) {
+  const k = this.kpi; let q = 0;
+  const b = this.bin15();
+  for (const cp of this.cp) { k.laneMin += cp.open * dt; k.laneSeries[b] += cp.open * dt; q += cp.q.length; }
+  if (q > k.maxQ) { k.maxQ = q; k.maxQt = this.t; }
+  if (q > k.qMaxSeries[b]) k.qMaxSeries[b] = q;
+};
+Sim.prototype.closeFlight = function (f, fs) {
+  const k = this.kpi, miss = Math.max(0, fs.bagsIn - fs.bagsLoaded);
+  fs.bagsMissed = miss; k.missedBags += miss; k.closedBags += fs.bagsIn; k.closedFlights++; if (miss === 0) k.cleanFlights++;
+  k.missSeries[this.bin15()] += miss; k.closedSeries[this.bin15()] += fs.bagsIn; k.flightSeries[this.bin15()]++; if (miss === 0) k.cleanSeries[this.bin15()]++;
+  if (fs.lat >= 0) { const Lt = this.lat[fs.lat]; if (Lt.f === f.id) { for (const b of Lt.slots) { b.missed = true; b.st = B.GONE; } Lt.slots.length = 0; Lt.n = 0; Lt.res = 0; Lt.f = -1; } }
+  if (fs.train) { const tug = fs.train; for (const b of tug.bags) b.st = B.GONE; tug.bags = []; tug.st = 0; tug.f = null; fs.train = null; }
+  this.tugReq = this.tugReq.filter(r => r.f !== f);
+  for (const b of this.bags) if (b.f === f && b.st !== B.GONE && b.st < B.ARR) { b.missed = true; b.c = 2; }
+  if (miss >= 5) this.addLog('scn', `${f.code} 便（${hhmm(f.dep)} 発）は、手荷物 ${miss} 個を搭載できずに出発しました。`);
+};
+Sim.prototype.spawnArrivalBags = function (f, fs) {
+  const n = Math.min(100, Math.round(f.paxIn * 0.36)), sp = standSpot(f.gate);
+  const tug = { id: 100 + f.id, st: 8, x: sp[0], z: sp[1], hx: 0, hz: 1, path: null, s: 0, len: 0, f, bags: [], tEnd: f.arr + 8, kind: 1, credit: 0 };
+  setTugPath(tug, [[sp[0], sp[1]], [sp[0], BHS.zRoad], [BHS.arrIn.x + 6, BHS.zRoad], [BHS.arrIn.x + 6, BHS.arrIn.z], [BHS.arrIn.x + 2, BHS.arrIn.z + 2]]);
+  for (let i = 0; i < n; i++) {
+    const b = { id: this.bagSeq++, f, u: ((i * 7919 + f.id * 31) % 1000) / 1000, x: sp[0], y: 1, z: sp[1], st: B.TRAIN, wp: null, next: 0, spd: SPD.belt, t0: this.t, store: 0, tS: 0,
+      line: 3, read: true, mis: false, missed: false, dest: 0, uDest: -1, uLoop: 0, dist: 0, laps: 0, lat: (f.gate + i) % 2, slot: i, tEnd: 0, c: 4, xfer: false, tug, k: 0, tRoute: 0 };
+    tug.bags.push(b); this.bags.push(b);
+  }
+  this.arrTugs.push(tug);
+};
+
+// ---- シナリオ（両方のシミュレーションへ同時に入れる）----
+Sim.prototype.rerouteEds = function (line) {         // コレクター上にある手荷物を迂回先へ流す
+  for (const b of this.bags) if (b.st === B.MOVE && b.next === NEXT.EDS_Q && b.line === line && b.y < 2 && Math.abs(b.z - 50) < 1) {
+    this.eds[line].n--; const l2 = b.line = this.pickEds(b.x, line), ex = BHS.edsX[l2]; this.eds[l2].n++;
+    b.wp = [[ex + (ex >= b.x ? -1 : 1), BY, b.z], [ex, BY, BHS.zEdsIn + 3]];
+  }
+};
+Sim.prototype.scenarioEds = function (line, dur) {
+  const lag = this.mode ? P.ai.edsDetect : P.base.edsSwitch;
+  this.scn.edsDown = line; this.scn.edsUntil = this.t + dur; this.scn.edsSwitchAt = this.t + lag;
+  this.addLog('scn', `インライン EDS ${line + 1} 号機が停止しました（復旧見込み ${hhmm(this.t + dur)}）。`);
+  setTimeoutSim(this, lag, () => {
+    if (this.scn.edsDown !== line) return;
+    this.rerouteEds(line);
+    if (this.mode === 1) this.addLog('ai', `EDS ${line + 1} 号機の停止を検知しました。コレクターを流れる手荷物を、残る 2 ラインのうち待ち個数が少ないラインへ振り分けます。滞留中は出発の早い便の手荷物を先に通します。`);
+    else this.addLog('ops', `係員が迂回経路へ切り替えました。${line + 1} 号機へ向かう手荷物は、固定の迂回先である ${(line + 1) % 3 + 1} 号機へ流れます。`);
+  });
+};
+Sim.prototype.scenarioCp = function (c, dur) {
+  const cp = this.cp[c]; cp.limit = 1; cp.limitUntil = this.t + dur;
+  this.addLog('scn', `保安検査場 ${LAY.cps[c].name} の検査機器が故障しました。${hhmm(this.t + dur)} まで 1 レーンだけで運用します。`);
+  if (this.mode === 1) { this.addLog('ai', `サイネージの案内を切り替え、出発ロビーの旅客を保安検査場 ${'ABC'.replace(LAY.cps[c].name, '').split('').join(' と ')} へ誘導します。`); this.aiPlanLanes(); }
+};
+Sim.prototype.scenarioExtra = function (f) {
+  this.addLog('scn', `臨時便 ${f.code}（${hhmm(f.dep)} 発、${f.paxOut} 名、ゲート ${LAY.gates[f.gate].no}）が追加されました。`);
+  if (this.mode === 1) { this.addLog('ai', `臨時便 ${f.code} を到着予測に反映しました。チェックイン島 ${LAY.islands[f.island].name} に近い検査場のレーン計画を作り直します。`); this.aiPlanLanes(); }
+  else this.addLog('ops', `人員計画は 1 時間刻みの固定値のため、臨時便の旅客には待ち行列が伸びてから対応します。`);
+};
+
+// AI 最適化の定期レポート（誘導・振り分けの実績を 10 分ごとに記録する）
+Sim.prototype.aiReport = function () {
+  if (this.mode !== 1 || this.t < this.nextReport) return;
+  this.nextReport = this.t + 10;
+  let bi = -1, bv = 14;
+  for (let i = 0; i < 9; i++) { const d = this.gd[i] - this.gdLast[i]; if (d > bv) { bv = d; bi = i; } this.gdLast[i] = this.gd[i]; }
+  if (bi >= 0) {
+    const from = Math.floor(bi / 3), to = bi % 3, w = c => { const cp = this.cp[c]; return Math.round(cp.q.length * P.secSvcMean / Math.max(1, Math.min(cp.open, cp.limit))); };
+    this.addLog('ai', `サイネージで旅客 ${bv} 人を保安検査場 ${LAY.cps[from].name} から ${LAY.cps[to].name} へ誘導しました。現在の待ちは ${LAY.cps[from].name} が約 ${w(from)} 分、${LAY.cps[to].name} が約 ${w(to)} 分です。`);
+  }
+  const rb = this.kpi.rebalanced - this.rebLast; this.rebLast = this.kpi.rebalanced;
+  if (rb >= 25) this.addLog('ai', `直近 10 分間に手荷物 ${rb} 個を、待ち個数が少ない EDS ラインへ振り分けました。`);
+};
+
+Sim.prototype.step = function (dt) {
+  this.t += dt;
+  if (this.timers.length) this.timers = this.timers.filter(tm => tm.t > this.t ? true : (tm.fn(), false));
+  this.spawnPax(); this.spawnXferBags(); this.controlSecurity();
+  this.stepFlights(dt); this.stepPax(dt);
+  this.stepEds(dt); this.stepBags(dt); this.stepMakeup(dt);
+  this.tickKpi(dt); this.aiReport();
+};
+
+// 画面に出す値（単位つき）。直近 60 分の処理数は 1 分刻みのカウンターから数える
+Sim.prototype.view = function () {
+  const k = this.kpi, t = this.t | 0; let pax60 = 0, bag60 = 0;
+  for (let m = Math.max(0, t - 59); m <= t; m++) { pax60 += k.secPerMin[m]; bag60 += k.loadPerMin[m]; }
+  return {
+    waitAvg: k.secN ? k.secSum / k.secN : 0, waitMax: k.secMax, maxQ: k.maxQ, laneHours: k.laneMin / 60 * P.staffPerLane,
+    bagTime: k.bagTimeN ? k.bagTimeSum / k.bagTimeN : 0, mishandled: k.closedBags ? k.missedBags / k.closedBags * 1000 : 0,
+    missedBags: k.missedBags, closedBags: k.closedBags, clean: k.closedFlights ? k.cleanFlights / k.closedFlights * 100 : 100,
+    cleanFlights: k.cleanFlights, closedFlights: k.closedFlights, pax60, bag60, noReadRate: k.reads ? k.noRead / k.reads * 100 : 0,
+    recircLaps: k.recircLaps, missedPax: k.missedPax, boarded: k.boarded, guided: k.guided, secN: k.secN, loaded: k.loaded,
+  };
+};
+// 直近 60 分（15 分刻みの集計 4 本分）の値
+Sim.prototype.view60 = function () {
+  const k = this.kpi, b1 = this.bin15(), b0 = Math.max(0, b1 - 3), v = this.view();
+  let ws = 0, wn = 0, q = 0, ln = 0, bs = 0, bn = 0, ms = 0, cl = 0, fl = 0, cf = 0;
+  for (let b = b0; b <= b1; b++) { ws += k.waitSum[b]; wn += k.waitN[b]; q = Math.max(q, k.qMaxSeries[b]); ln += k.laneSeries[b]; bs += k.bagSeries[b]; bn += k.bagSeriesN[b]; ms += k.missSeries[b]; cl += k.closedSeries[b]; fl += k.flightSeries[b]; cf += k.cleanSeries[b]; }
+  return Object.assign(v, { waitAvg: wn ? ws / wn : 0, maxQ: q, laneHours: ln / 60 * P.staffPerLane, bagTime: bn ? bs / bn : 0, mishandled: cl ? ms / cl * 1000 : 0, missedBags: ms, closedBags: cl,
+    clean: fl ? cf / fl * 100 : 100, cleanFlights: cf, closedFlights: fl });
+};
+// =====================================================================
+// 50 scene (土台) : レンダラー・カメラ・照明・テーマ追従・ジオメトリ結合の道具
+// =====================================================================
+const $ = id => document.getElementById(id);
+const stageEl = $('stage'), wrapEl = $('stageWrap');
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+const isNarrow = window.matchMedia('(max-width: 860px)');
+const renderer = new THREE.WebGLRenderer({ canvas: stageEl, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap; renderer.shadowMap.autoUpdate = false;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(34, 1, 3, 5000);
+camera.position.set(-250, 215, 330);
+const controls = new OrbitControls(camera, stageEl);
+controls.enableDamping = true; controls.dampingFactor = 0.09; controls.maxPolarAngle = 1.46; controls.minDistance = 28; controls.maxDistance = 1500;
+controls.target.set(0, 4, 8); controls.zoomSpeed = 0.9; controls.rotateSpeed = 0.7;
+const labelRenderer = new CSS2DRenderer({ element: $('labels') });
+
+const hemi = new THREE.HemisphereLight(0xffffff, 0xcccccc, 1);
+const sun = new THREE.DirectionalLight(0xffffff, 1);
+sun.position.set(-170, 300, 210); sun.castShadow = true;
+sun.shadow.mapSize.set(isNarrow.matches ? 1024 : 2048, isNarrow.matches ? 1024 : 2048);
+Object.assign(sun.shadow.camera, { left: -290, right: 290, top: 190, bottom: -230, near: 50, far: 800 }); sun.shadow.camera.updateProjectionMatrix();
+sun.shadow.bias = -0.0006; sun.shadow.normalBias = 0.6; sun.shadow.radius = 3.5;
+scene.add(hemi, sun, sun.target);
+
+// ---- テーマ: CSS のトークンを唯一の色の定義にして、3D の材質へ写す ----
+const TOKENS = ['s-sky', 's-ground', 's-apron', 's-water', 's-water2', 's-bldg', 's-bldg2', 's-slab', 's-belt', 's-machine', 's-edge', 's-aircraft', 's-runway', 's-mark', 's-road', 's-glass', 's-lofloor', 's-lowall', 's-lobelt', 's-lomachine',
+  'pax', 'pax-q', 'pax-x', 'pax-arr', 'bag', 'bag-re', 'bag-ng', 'bag-ebs', 'bag-arr', 'sign', 'ink', 'ink-2', 'ink-3', 'grid', 'base-c', 'ai-c', 'line', 'bad', 'good'];
+const TH = { dark: false, c: {}, css: {} };
+const themed = [];
+function M(key, opts = {}, Type = THREE.MeshStandardMaterial) {
+  const base = Type === THREE.MeshStandardMaterial ? { roughness: 1, metalness: 0 } : {};
+  const m = new Type({ ...base, ...opts }); themed.push({ m, key }); return m;
+}
+const themeHooks = [];
+function applyTheme() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of TOKENS) { const v = cs.getPropertyValue('--' + k).trim() || '#888'; TH.css[k] = v; TH.c[k] = new THREE.Color(v); }
+  const sky = TH.c['s-sky']; TH.dark = (sky.r + sky.g + sky.b) / 3 < 0.25;
+  for (const { m, key } of themed) { m.color.set(TH.c[key]); if (m.userData.emissiveKey) m.emissive.set(TH.c[m.userData.emissiveKey]); }
+  scene.background = sky.clone();
+  scene.fog = new THREE.Fog(sky.clone(), TH.dark ? 500 : 700, TH.dark ? 1900 : 2600);
+  if (TH.dark) { hemi.color.set(0x8fa8c8); hemi.groundColor.set(0x0a0f14); hemi.intensity = 1.25; sun.color.set(0xa9c0e6); sun.intensity = 0.85; }
+  else { hemi.color.set(0xffffff); hemi.groundColor.set(0xa9b3bc); hemi.intensity = 1.35; sun.color.set(0xfff3e0); sun.intensity = 2.0; }
+  for (const h of themeHooks) h();
+  renderer.shadowMap.needsUpdate = true;
+}
+
+// ---- 静的ジオメトリは材質ごとに 1 メッシュへ結合する（描画回数を抑える）----
+const buckets = new Map();
+function addGeo(mat, g) { if (!buckets.has(mat)) buckets.set(mat, []); buckets.get(mat).push(g.index ? g.toNonIndexed() : g); return g; }
+function box(mat, w, h, d, x, y, z, ry = 0) { const g = new THREE.BoxGeometry(w, h, d); if (ry) g.rotateY(ry); g.translate(x, y, z); return addGeo(mat, g); }
+function cyl(mat, r, h, x, y, z, seg = 16, r2 = r) { const g = new THREE.CylinderGeometry(r2, r, h, seg); g.translate(x, y, z); return addGeo(mat, g); }
+function flat(mat, w, d, x, y, z, ry = 0) { const g = new THREE.PlaneGeometry(w, d); g.rotateX(-Math.PI / 2); if (ry) g.rotateY(ry); g.translate(x, y, z); return addGeo(mat, g); }
+// 2 点を結ぶ帯（ベルト・路面標示など）
+function strip(mat, x0, z0, x1, z1, w, y, h = 0) {
+  const dx = x1 - x0, dz = z1 - z0, len = Math.hypot(dx, dz), ang = Math.atan2(dx, dz);
+  const g = h ? new THREE.BoxGeometry(w, h, len) : new THREE.PlaneGeometry(w, len).rotateX(-Math.PI / 2);
+  g.rotateY(ang); g.translate((x0 + x1) / 2, y + (h ? h / 2 : 0), (z0 + z1) / 2); return addGeo(mat, g);
+}
+function flush(parent, { cast = false, receive = true, order = 0 } = {}) {
+  const out = [];
+  for (const [mat, list] of buckets) {
+    const mesh = new THREE.Mesh(mergeGeometries(list, false), mat);
+    mesh.castShadow = cast && !mat.userData.noShadow; mesh.receiveShadow = receive; mesh.renderOrder = order; mesh.matrixAutoUpdate = false;
+    parent.add(mesh); out.push(mesh); for (const g of list) g.dispose();
+  }
+  buckets.clear(); return out;
+}
+function canvasTex(w, h, draw) { const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; }
+
+const world3d = new THREE.Group(); scene.add(world3d);
+const gSite = new THREE.Group(), gLower = new THREE.Group(), gUpper = new THREE.Group(), gApron = new THREE.Group(), gNight = new THREE.Group();
+world3d.add(gSite, gLower, gUpper, gApron, gNight);
+// =====================================================================
+// 52 scene (敷地) : 東京湾・空港島・滑走路 4 本・誘導路・ランドサイドの道路と駅
+// 実際の配置を写したものではなく、羽田をモデルにした構想図。ターミナルのエアサイドが -z
+// =====================================================================
+const mGround = M('s-ground'), mApron = M('s-apron'), mRunway = M('s-runway'), mRoad = M('s-road');
+const mMark = M('s-mark', {}, THREE.MeshBasicMaterial);
+const mBldg = M('s-bldg'), mBldg2 = M('s-bldg2'), mEdge = M('s-edge'), mMachine = M('s-machine'), mBelt = M('s-belt');
+const mGlass = M('s-glass', { transparent: true, opacity: 0.45, depthWrite: false });
+const RUNWAYS = [
+  { id: 'A', name: 'A 滑走路', n: ['16R', '34L'], x: 30, z: -212, len: 900, rot: 0 },
+  { id: 'C', name: 'C 滑走路', n: ['16L', '34R'], x: 70, z: -430, len: 940, rot: 0 },
+  { id: 'B', name: 'B 滑走路', n: ['04', '22'], x: -560, z: -300, len: 500, rot: 0.5 },
+  { id: 'D', name: 'D 滑走路', n: ['05', '23'], x: 700, z: -640, len: 640, rot: -0.62 },
+];
+const waterTex = canvasTex(256, 256, (g, w, h) => {
+  g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.strokeStyle = 'rgba(0,0,0,0.07)'; g.lineWidth = 1.2;
+  for (let i = 0; i < 26; i++) { const y = (i * 53) % h, x = (i * 97) % w, l = 30 + (i * 31) % 70; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + l / 2, y - 3, x + l, y); g.stroke(); }
+});
+waterTex.wrapS = waterTex.wrapT = THREE.RepeatWrapping; waterTex.repeat.set(70, 70);
+const mWater = M('s-water', { map: waterTex, roughness: 0.55, metalness: 0.1 });
+
+function buildSite() {
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000).rotateX(-Math.PI / 2), mWater);
+  water.position.y = -2.2; water.receiveShadow = false; gSite.add(water);
+  const land = pts => { const s = new THREE.Shape(pts.map(p => new THREE.Vector2(p[0], -p[1]))); const g = new THREE.ExtrudeGeometry(s, { depth: 2.4, bevelEnabled: false }); g.rotateX(-Math.PI / 2); g.translate(0, -2.5, 0); return g; };
+  // 空港島（護岸の角を落とした多角形）と D 滑走路の島、対岸
+  addGeo(mGround, land([[-296, 300], [520, 300], [660, 170], [700, -40], [690, -300], [600, -500], [300, -520], [-330, -520], [-620, -470], [-830, -300], [-810, -150], [-470, -66], [-330, 20], [-296, 110]]));   // 南西側は河口の水面
+  const d = RUNWAYS[3], c = Math.cos(d.rot), s = Math.sin(d.rot), rp = (lx, lz) => [d.x + lx * c + lz * s, d.z - lx * s + lz * c];
+  addGeo(mGround, land([rp(-380, 70), rp(380, 70), rp(400, 0), rp(380, -70), rp(-380, -70), rp(-400, 0)]));
+  addGeo(mGround, land([rp(-330, 70), rp(-250, 70), [520, -505], [430, -505]]));            // 連絡誘導路の桟橋
+  addGeo(mGround, land([[-1500, 380], [1500, 380], [1500, 1500], [-1500, 1500]]));          // 対岸の市街地
+  addGeo(mGround, land([[-1500, 150], [-560, 220], [-520, 380], [-1500, 380]]));                // 河口の対岸
+  // エプロンと誘導路
+  flat(mApron, 470, 128, 26, 0.02, -78); flat(mApron, 62, 70, 215, 0.02, -62);
+  strip(mRoad, -400, -168, 520, -168, 20, 0.03); strip(mRoad, -420, -256, 520, -256, 18, 0.03);
+  for (const x of [-360, -150, 60, 270, 470]) strip(mRoad, x, -142, x, -212, 16, 0.03);
+  for (const x of [-250, 130, 420]) strip(mRoad, x, -256, x, -430, 16, 0.03);
+  strip(mMark, -420, -168, 520, -168, 0.5, 0.06); strip(mMark, -420, -256, 520, -256, 0.5, 0.06);
+  // 滑走路
+  for (const r of RUNWAYS) {
+    const cs = Math.cos(r.rot), sn = Math.sin(r.rot), P2 = (l, o = 0) => [r.x + l * cs + o * sn, r.z - l * sn + o * cs];
+    const a = P2(-r.len / 2), b = P2(r.len / 2);
+    strip(mRunway, a[0], a[1], b[0], b[1], 24, 0.05);
+    for (let l = -r.len / 2 + 60; l < r.len / 2 - 60; l += 26) { const p = P2(l), q = P2(l + 13); strip(mMark, p[0], p[1], q[0], q[1], 0.7, 0.09); }
+    for (const e of [-1, 1]) {
+      for (let k = -4; k <= 4; k++) { if (!k) continue; const p = P2(e * (r.len / 2 - 8), k * 2.3), q = P2(e * (r.len / 2 - 20), k * 2.3); strip(mMark, p[0], p[1], q[0], q[1], 1.1, 0.09); }
+      for (const l of [70, 110, 150]) for (const o of [-6.5, 6.5]) { const p = P2(e * (r.len / 2 - l), o), q = P2(e * (r.len / 2 - l - 10), o); strip(mMark, p[0], p[1], q[0], q[1], 2.4, 0.09); }
+      // 指示標識（数字）は CanvasTexture で作る
+      const num = r.n[e < 0 ? 0 : 1], tex = canvasTex(256, 128, (g, w, h) => { g.clearRect(0, 0, w, h); g.fillStyle = '#fff'; g.font = '700 92px "B612", "Arial Narrow", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(num, w / 2, h / 2 + 6); });
+      const dm = new THREE.Mesh(new THREE.PlaneGeometry(20, 10).rotateX(-Math.PI / 2), M('s-mark', { map: tex, transparent: true, depthWrite: false }, THREE.MeshBasicMaterial));
+      const p = P2(e * (r.len / 2 - 42)); dm.position.set(p[0], 0.12, p[1]); dm.rotation.y = r.rot + (e < 0 ? -Math.PI / 2 : Math.PI / 2); gSite.add(dm);
+    }
+    addLabel(`${r.name} <span class="num">${r.n[0]}/${r.n[1]}</span>`, P2(r.id === 'A' ? -230 : r.id === 'C' ? 250 : 0)[0], 6, P2(0)[1], 'rw', 4);
+  }
+  // 国内線地区（A 滑走路と C 滑走路の間）は低い白模型で示す
+  for (const [x, z, w, dd, h] of [[-120, -330, 300, 34, 13], [-120, -352, 240, 14, 8], [170, -338, 250, 30, 12], [330, -342, 60, 22, 22], [20, -300, 16, 16, 44]]) box(mBldg2, w, h, dd, x, h / 2, z);
+  cyl(mBldg, 7, 5, 20, 46.5, -300, 12, 10);                                                    // 管制塔
+  // ランドサイド: 高架道路（出発階カーブサイド）・駅・駐車場
+  box(mRoad, 380, 0.8, 16, 0, YU - 0.4, 98); box(mEdge, 380, 1.1, 0.6, 0, YU + 0.4, 106.3);
+  for (let x = -180; x <= 180; x += 40) box(mBldg2, 2.4, YU - 0.8, 2.4, x, (YU - 0.8) / 2, 98);
+  strip(mRoad, -190, 98, -420, 190, 16, YU - 0.8, 0.8); strip(mRoad, 190, 98, 420, 190, 16, YU - 0.8, 0.8);
+  strip(mRoad, -420, 190, -600, 262, 16, YU - 0.8, 0.8);                                        // 河口を渡る連絡橋
+  for (const k of [0.2, 0.5, 0.8]) { box(mBldg2, 2.4, YU + 1.4, 2.4, lerp(-190, -420, k), (YU - 2.2) / 2, lerp(98, 190, k)); box(mBldg2, 2.4, YU + 1.4, 2.4, lerp(-420, -600, k), (YU - 2.2) / 2, lerp(190, 262, k)); }
+  flat(mRoad, 420, 20, 0, 0.04, 100);                                                          // 到着階の車道
+  box(mBldg2, 130, 12, 54, 96, 6, 168); box(mBldg2, 130, 0.8, 54, 96, 12.5, 168);              // 駐車場
+  for (let k = 1; k < 3; k++) box(mEdge, 131, 0.5, 55, 96, k * 4, 168);
+  // 駅と連絡通路（モノレール・鉄道）
+  box(mBldg, 26, 9, 40, 196, YU + 2.5, 66); box(mGlass, 24, 5, 12, 176, YU + 3, 62);
+  box(mBldg2, 30, YU - 2, 44, 196, (YU - 2) / 2, 66);
+  strip(mEdge, 208, 320, 208, -40, 5, YU + 9, 1.2); strip(mEdge, 208, -40, 360, -150, 5, YU + 9, 1.2);
+  for (let z = -20; z < 320; z += 34) box(mBldg2, 2, YU + 9, 2, 208, (YU + 9) / 2, z);
+  box(mMachine, 4, 3.4, 34, 208, YU + 11.9, 70);                                               // 停車中の車両
+  // 対岸の街区
+  const rr = mulberry32(77);
+  for (let i = 0; i < 90; i++) { const x = -1100 + rr() * 2200, z = 420 + rr() * 420, h = 6 + rr() * rr() * 46, w = 20 + rr() * 50; box(mBldg2, w, h, 18 + rr() * 40, x, h / 2, z); }
+  flush(gSite, { cast: false, receive: true });
+  gSite.children.forEach(m => { if (m.material === mBldg || m.material === mBldg2 || m.material === mMachine) m.castShadow = true; });
+  themeHooks.push(() => { mWater.color.set(TH.c['s-water']); });
+}
+// =====================================================================
+// 54 scene (ターミナル上階) : 屋根を外したカットアウェイ。出発ロビー → 保安検査 → 出国審査 → コンコース → ゲート
+// =====================================================================
+// 床スラブ: すりガラスの床に目地を入れる（床として読めて、下階の流れも透ける）
+const slabTex = canvasTex(256, 256, (g, w) => { g.clearRect(0, 0, w, w); g.fillStyle = 'rgba(255,255,255,0.8)'; g.fillRect(0, 0, w, w); g.strokeStyle = 'rgba(255,255,255,1)'; g.lineWidth = 4; g.strokeRect(0, 0, w, w); g.lineWidth = 1.5; g.beginPath(); g.moveTo(w / 2, 0); g.lineTo(w / 2, w); g.moveTo(0, w / 2); g.lineTo(w, w / 2); g.stroke(); });
+slabTex.wrapS = slabTex.wrapT = THREE.RepeatWrapping; slabTex.repeat.set(43, 12.25); slabTex.anisotropy = 4;
+const mSlab = M('s-slab', { map: slabTex, transparent: true, opacity: 1, depthWrite: false });
+const gRoof = new THREE.Group(); gUpper.add(gRoof);
+const mUp = M('s-bldg', { transparent: true }), mUp2 = M('s-bldg2', { transparent: true }), mUpEdge = M('s-edge', { transparent: true }), mUpMachine = M('s-machine', { transparent: true });
+const mUpGlass = M('s-glass', { transparent: true, opacity: 0.4, depthWrite: false });
+const mRoof = M('s-edge', { transparent: true, opacity: 0.55 });
+for (const m of [mSlab, mUpGlass, mRoof, mGlass, mMark]) m.userData.noShadow = true;
+const upperMats = [mUp, mUp2, mUpEdge, mUpMachine];
+let laneLights = null;
+
+function buildUpper() {
+  const { X0, X1, ZA, ZL } = LAY, W = X1 - X0, Dp = ZL - ZA, cx = 0, cz = (ZA + ZL) / 2;
+  // 床スラブ（半透明。下階の手荷物の流れが透けて見える）
+  const slab = new THREE.Mesh(new THREE.PlaneGeometry(W, Dp).rotateX(-Math.PI / 2).translate(cx, YU - 0.02, cz), mSlab); slab.renderOrder = 2; slab.receiveShadow = true; gUpper.add(slab);
+  box(mUpEdge, W, 0.5, 0.3, cx, YU - 0.25, ZL); box(mUpEdge, W, 0.5, 0.3, cx, YU - 0.25, ZA); box(mUpEdge, 0.3, 0.5, Dp, X0, YU - 0.25, cz); box(mUpEdge, 0.3, 0.5, Dp, X1, YU - 0.25, cz);   // スラブの小口
+  // 外周の腰壁とランドサイドのガラス面
+  box(mUp, W, 2.2, 0.8, cx, YU + 1.1, ZL); box(mUp, 0.8, 2.2, Dp, X0, YU + 1.1, cz); box(mUp, 0.8, 2.2, Dp - 30, X1, YU + 1.1, cz - 15 + 2);
+  box(mUpGlass, W, 9, 0.3, cx, YU + 6.6, ZL + 0.2); box(mUpGlass, W, 4.4, 0.3, cx, YU + 2.2, ZA);
+  for (let x = X0; x <= X1; x += 21.5) box(mUpEdge, 0.7, 11, 0.7, x, YU + 5.5, ZL + 0.2);
+  // 入口（3 か所）と駅連絡通路
+  for (const d of LAY.doors) {
+    if (d.station) { box(mUp, 26, 0.5, 10, X1 + 13, YU - 0.25, d.z); box(mUpGlass, 26, 3.2, 0.3, X1 + 13, YU + 1.6, d.z - 5); box(mUpGlass, 26, 3.2, 0.3, X1 + 13, YU + 1.6, d.z + 5); }
+    else { box(mUp, 16, 0.6, 9, d.x, YU + 4.4, ZL + 4.6); box(mUpEdge, 0.5, 4.6, 0.5, d.x - 7.5, YU + 2.2, ZL + 8.6); box(mUpEdge, 0.5, 4.6, 0.5, d.x + 7.5, YU + 2.2, ZL + 8.6); }
+  }
+  // 大屋根は骨組みだけを残す
+  flush(gUpper, { cast: true, receive: true, order: 1 });
+  for (let x = X0 + 14; x < X1; x += 43) { box(mRoof, 0.45, 0.6, Dp + 16, x, YU + 19, cz + 4); box(mRoof, 0.45, 7, 0.45, x, YU + 15.5, ZL + 0.2); box(mRoof, 0.45, 14.5, 0.45, x, YU + 11.7, ZA); }
+  box(mRoof, W, 0.5, 0.45, cx, YU + 19, ZL + 12); box(mRoof, W, 0.5, 0.45, cx, YU + 19, ZA - 4);
+  for (const m of flush(gRoof, { cast: false, receive: false, order: 3 })) m.renderOrder = 3;
+  // チェックイン島と自動手荷物預け機
+  LAY.islands.forEach((is, i) => {
+    const len = is.z1 - is.z0;
+    box(mUp, 5.2, 1.0, len, is.x, YU + 0.5, is.z0 + len / 2); box(mBelt, 1.5, 0.16, len + 1.2, is.x, YU + 1.08, is.z0 + len / 2 - 0.6);
+    for (let k = 0; k < LAY.dropsPerIsland; k++) { const kp = kioskPos(i, k), sx = k % 2 ? -1 : 1; box(mUpMachine, 1.5, 1.5, 1.3, kp.x + sx * 1.35, YU + 0.75, kp.z); box(mUpEdge, 0.2, 1.1, 0.9, kp.x + sx * 0.5, YU + 1.95, kp.z); }
+    box(mUpEdge, 0.5, 6.4, 0.5, is.x, YU + 3.2, is.z1 + 0.9); box(mUp2, 4.4, 1.9, 0.5, is.x, YU + 6.6, is.z1 + 0.9);
+    addLabel(`チェックイン <span class="num">${is.name}</span><small data-live="isl${i}"></small>`, is.x, YU + 9.5, is.z1 + 0.9, '', 2);
+  });
+  addLabel('出発ロビー<small>自動手荷物預け機 60 台</small>', -150, YU + 9, 76, 'major', 1);
+  // ランドサイドとエアサイドを分ける壁と、保安検査場（スマートレーン 6 本 × 3 か所）
+  const gaps = LAY.cps.map(c => [c.x - 14.4, c.x + 14.4]); let px = X0 + 8.5;       // 西端の 8.5 は到着旅客の通路
+  for (const [a, b] of gaps.concat([[X1, X1]])) { if (a > px) box(mUp, a - px, 3.4, 0.6, (a + px) / 2, YU + 1.7, 34); px = b; }
+  LAY.cps.forEach((cp, c) => {
+    for (let l = 0; l < LAY.cpLanes; l++) {
+      const x = laneX(c, l);
+      box(mUp2, 1.1, 0.85, 12.6, x + 1.25, YU + 0.43, 34.2);                         // トレーの搬送テーブル
+      box(mUpMachine, 1.5, 1.7, 3.2, x + 1.25, YU + 1.15, 34); box(mUpEdge, 1.52, 0.5, 3.3, x + 1.25, YU + 2.15, 34);   // X 線検査装置
+      box(mUpEdge, 0.16, 2.3, 0.5, x - 0.95, YU + 1.15, 33); box(mUpEdge, 0.16, 2.3, 0.5, x + 0.35, YU + 1.15, 33); box(mUpEdge, 1.46, 0.16, 0.5, x - 0.3, YU + 2.3, 33);   // ボディスキャナー
+    }
+    box(mUp, 0.5, 2.6, 15, cp.x - 14.4, YU + 1.3, 34); box(mUp, 0.5, 2.6, 15, cp.x + 14.4, YU + 1.3, 34);
+    for (let r = 0; r < 4; r++) box(mUpEdge, 27, 0.9, 0.12, cp.x, YU + 0.45, LAY.zQ - 0.65 + r * 1.3);      // 行列の仕切り
+    addLabel(`保安検査場 <span class="num">${cp.name}</span><small data-live="cp${c}"></small>`, cp.x, YU + 8, 43, 'major', 1, 2);
+    // 出国審査（顔認証ゲート）
+    for (let k = 0; k < LAY.immGates; k++) { const x = cp.x + (k - 3) * 2.6; box(mUpMachine, 0.5, 1.2, 2.4, x - 1.1, YU + 0.6, LAY.zImm); box(mUpGlass, 0.9, 1.0, 0.12, x - 0.4, YU + 0.7, LAY.zImm - 0.6); }
+    box(mUpMachine, 0.5, 1.2, 2.4, cp.x + 9.2 - 1.1 + 2.6 - 1.5, YU + 0.6, LAY.zImm);
+    box(mUp, 2.6 * 7 + 2, 0.3, 3.4, cp.x - 0.4, YU + 3.3, LAY.zImm); box(mUpEdge, 0.3, 3.2, 0.3, cp.x - 10, YU + 1.6, LAY.zImm); box(mUpEdge, 0.3, 3.2, 0.3, cp.x + 9.2, YU + 1.6, LAY.zImm);
+    addLabel(`出国審査 <span class="num">${cp.name}</span><small>顔認証ゲート ${LAY.immGates} 台</small>`, cp.x + 17, YU + 5.5, LAY.zImm, '', 2);
+  });
+  px = X0 + 8.5;
+  for (const [a, b] of LAY.cps.map(c => [c.x - 10.2, c.x + 9.4]).concat([[X1, X1]])) { if (a > px) box(mUp, a - px, 3.0, 0.5, (a + px) / 2, YU + 1.5, LAY.zImm - 1.6); px = b; }
+  // コンコース: ゲートラウンジの椅子・ゲートカウンター
+  LAY.gates.forEach((g, gi) => {
+    if (g.remote) { box(mUpMachine, 5, 1.1, 1, g.x + 9, YU + 0.55, -11.6); addLabel(`バスゲート <span class="num">${g.no}</span><small data-live="gate${gi}"></small>`, g.x + 9, YU + 6, -12, 'gate', 2); return; }
+    for (let r = 0; r < 4; r++) for (const sx of [-9.5, 0, 9.5]) box(mUp2, 7.6, 0.55, 0.8, g.x + sx - 2, YU + 0.28, -9 + r * 3.6);
+    box(mUpMachine, 4.6, 1.1, 1, g.x + 8, YU + 0.55, -11.2); box(mUpEdge, 0.3, 4.2, 0.3, g.x + 12, YU + 2.1, -12.8); box(mUp2, 2.6, 1.3, 0.3, g.x + 12, YU + 4.4, -12.8);
+    addLabel(`ゲート <span class="num">${g.no}</span><small data-live="gate${gi}"></small>`, g.x + 12, YU + 7.2, -12.8, 'gate', 2);
+  });
+  for (let x = X0 + 40; x < X1 - 20; x += 80) box(mUp2, 30, 0.12, 2.6, x, YU + 0.07, 6.4);                 // 動く歩道
+  addLabel('制限エリア コンコース', -40, YU + 6, 4, '', 3);
+  // 到着旅客の通路（西端）と下階への階段
+  addGeo(mUp2, new THREE.BoxGeometry(3.8, 0.3, 14.5).rotateX(0.983).translate(-168, YU / 2, 62)); box(mUpEdge, 0.25, 1.2, 70, X0 + 8.5, YU + 0.6, 23);
+  addLabel('到着通路', -168, YU + 4.5, 20, '', 3);
+  const meshes = flush(gUpper, { cast: true, receive: true, order: 1 });
+  for (const m of meshes) if (m.material === mUpGlass || m.material === mRoof) m.renderOrder = 3;
+  // レーンの稼働灯（開いているレーンだけ点灯）
+  laneLights = new THREE.InstancedMesh(new THREE.BoxGeometry(1.6, 0.35, 0.5), new THREE.MeshBasicMaterial(), 18);
+  const m4 = new THREE.Matrix4();
+  for (let c = 0; c < 3; c++) for (let l = 0; l < 6; l++) { m4.makeTranslation(laneX(c, l) + 0.2, YU + 3.1, LAY.zLaneIn - 0.4); laneLights.setMatrixAt(c * 6 + l, m4); laneLights.setColorAt(c * 6 + l, new THREE.Color(0x888888)); }
+  laneLights.renderOrder = 4; gUpper.add(laneLights);
+  for (let c = 0; c < 3; c++) for (let l = 0; l < 6; l++) box(mUpEdge, 0.14, 3.2, 0.14, laneX(c, l) + 0.2, YU + 1.6, LAY.zLaneIn - 0.4);
+  flush(gUpper, { cast: false, receive: false, order: 1 });
+}
+// 「上階を透かす」: 上階の造作と旅客を薄くして、下階の手荷物ホールを見せる
+let upperGhost = 0, upperGhostTarget = 0;
+function setUpperOpacity(k) {     // k: 0 = 通常、1 = 透かす
+  mSlab.opacity = lerp(TH.dark ? 0.9 : 1, 0.14, k);
+  for (const m of upperMats) { m.opacity = lerp(1, 0.13, k); m.depthWrite = k < 0.5; }
+  mUpGlass.opacity = lerp(0.4, 0.06, k); mRoof.opacity = lerp(0.55, 0.08, k);
+}
+// =====================================================================
+// 55 scene (下階) : 手荷物ホール（コレクター → インライン EDS → 高速仕分け機 → EBS / メイクアップ）と到着ロビー
+// =====================================================================
+// 下階は上階より一段暗い色の模型にして、階の違いを明度で見分ける
+const mFloorLo = M('s-lofloor'), mLoop = M('s-lobelt'), mRack = M('s-lomachine'), mLoWall = M('s-lowall'), mLoBelt = M('s-lobelt'), mLoMachine = M('s-lomachine');
+const mPath = M('bag', { transparent: true, opacity: 0.3, depthWrite: false }, THREE.MeshBasicMaterial); mPath.userData.noShadow = true;
+const gPath = new THREE.Group(); gLower.add(gPath);
+let edsLights = null;
+
+function buildLower() {
+  const { X0, X1, ZA, ZL } = LAY, W = X1 - X0, Dp = ZL - ZA, cz = (ZA + ZL) / 2, lp = BHS.loop;
+  flat(mFloorLo, W + 4, Dp + 2, 0, 0.05, cz);
+  box(mLoWall, 0.8, 3.0, Dp, X0, 1.5, cz); box(mLoWall, 0.8, 3.0, Dp, X1, 1.5, cz); box(mLoWall, X1 + 62, 3.0, 0.8, (X1 - 62) / 2, 1.5, ZL); box(mLoWall, -88 - X0, 3.0, 0.8, (X0 - 88) / 2, 1.5, ZL);   // 到着ロビーの出口（x = -88〜-62）を空ける
+  for (let x = -154; x <= 154; x += 30.8) for (const z of [56, 81]) cyl(mLoWall, 0.75, YU - 0.5, x, (YU - 0.5) / 2, z, 10);
+  for (let x = -157; x <= 151; x += 28) cyl(mLoWall, 0.75, YU - 0.5, x, (YU - 0.5) / 2, -11.5, 10);          // エアサイドの列は、ドーリーの出入り口を避けた位置に立てる
+  // チェックイン島からのシュートとコレクター（東行き・西行きの 2 本）
+  for (const is of LAY.islands) { cyl(mLoMachine, 1.7, YU - 0.6, is.x, (YU - 0.6) / 2 + 0.1, 52, 14); strip(mLoBelt, is.x, 52, is.x, 49.3, 1.2, 0.2, 0.55); }
+  strip(mLoBelt, -127, 50.7, 127, 50.7, 1.15, 0.2, 0.55); strip(mLoBelt, -127, 49.3, 127, 49.3, 1.15, 0.2, 0.55);
+  // インライン EDS（3 ライン）
+  BHS.edsX.forEach((ex, l) => {
+    strip(mLoBelt, ex, 49.3, ex, lp.zc + lp.r, 1.2, 0.2, 0.55);
+    box(mLoMachine, 3.4, 3.0, 6.4, ex, 1.7, 43); box(mEdge, 3.6, 0.5, 2.2, ex, 3.3, 43); box(mEdge, 3.5, 3.1, 0.5, ex, 1.7, 45.4); box(mEdge, 3.5, 3.1, 0.5, ex, 1.7, 40.6);
+    strip(mLoBelt, ex + 0.6, 38.4, ex + 7, 38.4, 1.1, 0.2, 0.5); box(mLoWall, 3, 1.1, 1.6, ex + 9.2, 0.55, 37.6);          // 画像判定・開披検査の支線と作業台
+    addLabel(`インライン EDS <span class="num">${l + 1}</span> 号機<small data-live="eds${l}"></small>`, ex, 7, 43, l === 1 ? 'major' : '', l === 1 ? 1 : 2);
+  });
+  // 高速仕分け機（ループ状のソーター）
+  const o = { x: 0, z: 0 }, q = { x: 0, z: 0 };
+  for (let u = 0; u < lp.L; u += 4) { loopPos(u, o); loopPos(Math.min(u + 4.3, lp.L + 0.3), q); strip(mLoop, o.x, o.z, q.x, q.z, 1.7, 0.35, 0.75); }
+  for (let x = -lp.a; x <= lp.a; x += 23) { box(mEdge, 0.4, 0.5, 0.4, x, 0.25, lp.zc + lp.r); box(mEdge, 0.4, 0.5, 0.4, x, 0.25, lp.zc - lp.r); }
+  addLabel('高速仕分け機（ソーター）<small data-live="loop"></small>', 30, 6.5, lp.zc, 'major', 1);
+  // メイクアップ: 便ごとのラテラル 12 本
+  BHS.lateralX.forEach((lx, k) => {
+    strip(mLoBelt, lx, lp.zc - lp.r, lx, BHS.zLat0, 1.3, 0.2, 0.6); box(mLoWall, 3.7, 0.2, BHS.zLat0 - BHS.zLat1 + 2, lx, 0.1, (BHS.zLat0 + BHS.zLat1) / 2 - 0.4);
+    box(mEdge, 0.16, 0.6, BHS.zLat0 - BHS.zLat1 + 2, lx - 1.93, 0.3, (BHS.zLat0 + BHS.zLat1) / 2 - 0.4); box(mEdge, 0.16, 0.6, BHS.zLat0 - BHS.zLat1 + 2, lx + 1.93, 0.3, (BHS.zLat0 + BHS.zLat1) / 2 - 0.4);
+    addLabel(`<span class="num">${k + 1}</span><small data-live="lat${k}"></small>`, lx, 3.6, 0.5, '', 3);
+  });
+  addLabel('メイクアップエリア<small>便ごとのラテラル 12 本</small>', -30, 6, 9, 'major', 1);
+  // 早期手荷物ストレージ（EBS）: 4 段のラック
+  const e = BHS.ebs, c0 = { x: 0, y: 0, z: 0 };
+  for (let r = 0; r < e.rows; r++) { ebsCell(r * e.cols, c0); const z = c0.z;
+    for (let lv = 0; lv < e.levels; lv++) for (const dz of [-0.62, 0.62]) box(mRack, e.x1 - e.x0 - 3, 0.1, 0.14, (e.x0 + e.x1) / 2, 0.22 + lv * 1.7, z + dz);     // 棚はレールだけにして、保管中の手荷物が見えるようにする
+    for (let x = e.x0 + 1.5; x <= e.x1 - 1.4; x += 9.4) box(mRack, 0.22, e.levels * 1.7, 0.22, x, e.levels * 0.85, z - 0.8); }
+  strip(mLoBelt, -lp.a - lp.r, lp.zc, e.x0 + 2, lp.zc, 1.3, 0.2, 0.55); box(mLoMachine, 2.2, 7.4, 2.2, e.x1 - 1, 3.7, lp.zc);
+  addLabel('早期手荷物ストレージ（EBS）<small data-live="ebs"></small>', (e.x0 + e.x1) / 2, 12.5, 30, 'major', 1);
+  // 手作業コード入力（MES）と、従来運用の仮置き場、乗り継ぎ手荷物の投入口
+  strip(mLoBelt, lp.a + lp.r, lp.zc, BHS.mes.x - 2, lp.zc, 1.3, 0.2, 0.55); box(mLoWall, 3.2, 1.0, 1.4, BHS.mes.x + 1.6, 0.5, lp.zc - 2.2); box(mLoWall, 3.2, 1.0, 1.4, BHS.mes.x + 1.6, 0.5, lp.zc + 2.2);
+  addLabel('手作業コード入力<small data-live="mes"></small>', BHS.mes.x + 4, 5, lp.zc, '', 2);
+  const h = BHS.hold; for (const [a, b, c2, d2] of [[h.x0, h.z0, h.x1, h.z0], [h.x1, h.z0, h.x1, h.z1], [h.x1, h.z1, h.x0, h.z1], [h.x0, h.z1, h.x0, h.z0]]) strip(mEdge, a, b, c2, d2, 0.35, 0.08, 0.06);
+  addLabel('仮置き場（手作業）<small data-live="hold"></small>', (h.x0 + h.x1) / 2, 4, h.z1, '', 2);
+  strip(mLoBelt, BHS.xferIn.x + 7, BHS.xferIn.z + 8, BHS.xferIn.x, BHS.xferIn.z + 8, 1.2, 0.2, 0.55); strip(mLoBelt, BHS.xferIn.x, BHS.xferIn.z + 8, BHS.xferIn.x, BHS.xferIn.z, 1.2, 0.2, 0.55);
+  strip(mLoBelt, BHS.xferIn.x, BHS.xferIn.z, lp.a - 4, lp.zc + lp.r + 0.6, 1.2, 0.2, 0.55);
+  addLabel('乗り継ぎ手荷物の投入口', BHS.xferIn.x + 4, 4.5, BHS.xferIn.z + 9, '', 3);
+  // 到着: 取り降ろしベルトとターンテーブル（バゲージクレーム）
+  strip(mLoBelt, -169, -5, -169, 62, 1.2, 0.2, 0.55); strip(mLoBelt, -169, 62, BHS.claim[1].x, 62, 1.2, 0.2, 0.55);
+  for (const c of BHS.claim) {
+    strip(mLoBelt, c.x, 62, c.x, c.z - 3.6, 1.2, 0.2, 0.55);
+    const ring = new THREE.RingGeometry(0.72, 1, 40).rotateX(-Math.PI / 2); ring.scale(7.4, 1, 4.6); ring.translate(c.x, 0.82, c.z); addGeo(mLoop, ring);
+    const base = new THREE.CylinderGeometry(1, 1, 0.8, 40); base.scale(7.4, 1, 4.6); base.translate(c.x, 0.4, c.z); addGeo(mLoWall, base);
+  }
+  addLabel('バゲージクレーム<small>到着ターンテーブル 2 基</small>', -75, 6, 78, 'major', 1);
+  box(mLoWall, 0.6, 3.2, 22, -22, 1.6, 73); box(mGlass, 150, 3.4, 0.3, -97, 1.9, 61);                 // 到着ロビーの仕切り
+  // 構内道路の標示（ドーリーの走行路）
+  for (let x = -160; x < 160; x += 7) strip(mMark, x, -5, x + 3.5, -5, 0.3, 0.08);
+  const ms = flush(gLower, { cast: true, receive: true });
+  for (const m of ms) if (m.material === mFloorLo || m.material === mLoBelt || m.material === mLoop) m.castShadow = false;
+  // 手荷物の主な経路（表示の切替が可能）
+  for (const is of LAY.islands) strip(mPath, is.x, 52, is.x, 50, 0.5, 1.02);
+  strip(mPath, -125, 50, 125, 50, 0.5, 1.02);
+  for (const ex of BHS.edsX) strip(mPath, ex, 50, ex, lp.zc + lp.r, 0.5, 1.02);
+  for (let u = 0; u < lp.L; u += 4) { loopPos(u, o); loopPos(u + 4, q); strip(mPath, o.x, o.z, q.x, q.z, 0.5, 1.32); }
+  for (const lx of BHS.lateralX) strip(mPath, lx, lp.zc - lp.r, lx, BHS.zLat1, 0.5, 1.02);
+  strip(mPath, -lp.a - lp.r, lp.zc, e.x0 + 2, lp.zc, 0.5, 1.02); strip(mPath, lp.a + lp.r, lp.zc, BHS.mes.x - 2, lp.zc, 0.5, 1.02);
+  for (const g of LAY.gates) { const sp = [g.sx - 6.5, -52]; strip(mPath, sp[0], BHS.zRoad, sp[0], sp[1], 0.4, 0.12); }
+  strip(mPath, -170, BHS.zRoad, 206, BHS.zRoad, 0.4, 0.12);
+  flush(gPath, { cast: false, receive: false, order: 1 });
+  // EDS の稼働灯
+  edsLights = new THREE.InstancedMesh(new THREE.BoxGeometry(3.5, 0.28, 0.45), new THREE.MeshBasicMaterial(), 3);
+  const m4 = new THREE.Matrix4(); BHS.edsX.forEach((ex, l) => { m4.makeTranslation(ex, 3.45, 46.1); edsLights.setMatrixAt(l, m4); edsLights.setColorAt(l, new THREE.Color(0x22aa77)); });
+  gLower.add(edsLights);
+}
+// =====================================================================
+// 56 scene (エプロン) : 無塗装の汎用機・搭乗橋・スポットの標示・夜間の灯火
+// =====================================================================
+const mAircraft = M('s-aircraft', { roughness: 0.55 });
+const DOOR_Y = 4.4;                                   // 機体ドアの床高さ（搭乗橋の先端）
+function aircraftGeometry() {
+  const parts = [], add = g => parts.push(g.index ? g.toNonIndexed() : g);
+  const ex = (pts, depth) => new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(p => new THREE.Vector2(p[0], p[1]))), { depth, bevelEnabled: false });
+  add(new THREE.CapsuleGeometry(2.45, 27, 8, 20).rotateX(Math.PI / 2).translate(0, 4.6, 3));                       // 胴体
+  add(new THREE.CylinderGeometry(0.55, 2.45, 10.5, 20).rotateX(-Math.PI / 2).translate(0, 5.2, -16.6));            // 尾部
+  for (const s of [1, -1]) {
+    const wing = ex([[2 * s, 5.4], [19.5 * s, -7.6], [19.5 * s, -10.2], [2 * s, -5]], 0.55).rotateX(Math.PI / 2).translate(0, 3.9, 0); add(wing);   // 主翼（後退角つき）
+    add(ex([[1 * s, -15.6], [7.6 * s, -20], [7.6 * s, -21.8], [1 * s, -20.6]], 0.35).rotateX(Math.PI / 2).translate(0, 5.6, 0));                 // 水平尾翼
+    add(new THREE.CylinderGeometry(1.35, 1.2, 4.8, 16).rotateX(Math.PI / 2).translate(7.2 * s, 2.2, 0.6));                                  // エンジン
+    add(new THREE.BoxGeometry(0.5, 1.4, 2.6).translate(7.2 * s, 3.2, -0.6));
+    add(new THREE.BoxGeometry(0.9, 2.3, 2.2).translate(3 * s, 1.15, -3.2));                                                                // 主脚
+  }
+  add(new THREE.BoxGeometry(0.6, 2.3, 1).translate(0, 1.15, 13));
+  add(ex([[-14.5, 6.4], [-20.4, 14.6], [-23, 14.6], [-21, 6.4]], 0.4).rotateY(-Math.PI / 2).translate(0.2, 0, 0));                           // 垂直尾翼
+  const g = mergeGeometries(parts, false); g.computeVertexNormals(); return g;
+}
+function beam(mat, a, b, w, h) {                       // 2 点を結ぶ角材（搭乗橋など）
+  const dir = new THREE.Vector3().subVectors(b, a), len = dir.length(), g = new THREE.BoxGeometry(w, h, len);
+  g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir.normalize())); g.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2); return addGeo(mat, g);
+}
+const aircraft = [], runwayAc = [];
+let nightPts = null, floodDecals = [];
+const dotTex = canvasTex(64, 64, (g, w) => { const r = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); r.addColorStop(0, 'rgba(255,255,255,1)'); r.addColorStop(0.25, 'rgba(255,255,255,.55)'); r.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0, 0, w, w); });
+
+function buildApron() {
+  const acGeo = aircraftGeometry();
+  LAY.gates.forEach((g, gi) => {
+    const ac = new THREE.Mesh(acGeo, mAircraft); ac.castShadow = true; ac.receiveShadow = false; ac.position.set(g.sx, 0, LAY.standNoseZ - 20.5); ac.visible = false; gApron.add(ac); aircraft.push(ac);
+    strip(mMark, g.sx, -30, g.sx, -112, 0.45, 0.07); strip(mMark, g.sx - 3, LAY.standNoseZ + 4.5, g.sx + 3, LAY.standNoseZ + 4.5, 0.45, 0.07);
+    for (const s of [-1, 1]) strip(mMark, g.sx + s * 19.6, -34, g.sx + s * 19.6, -90, 0.2, 0.07);
+    addLabel(g.remote ? `オープンスポット <span class="num">201</span>` : `スポット <span class="num">${g.no}</span>`, g.sx, 1.5, -96, 'rw', 3);
+    if (g.remote) return;
+    // 搭乗橋: 固定橋 → ロタンダ → 伸縮トンネル → キャブ
+    const y0 = YU + 1.35, rot = new THREE.Vector3(g.x + 8, y0, -24.5), cab = new THREE.Vector3(g.x + 4.6, DOOR_Y + 1.35, LAY.standNoseZ - 5.5);
+    beam(mBldg, new THREE.Vector3(g.x + 8, y0, LAY.ZA), rot, 2.5, 2.7); cyl(mBldg, 2.3, 3.1, rot.x, y0, rot.z, 16); box(mBldg2, 1, y0 - 1.5, 1, rot.x, (y0 - 1.5) / 2, rot.z);
+    beam(mBldg, rot, cab, 2.3, 2.5); box(mMachine, 3, 2.8, 3, cab.x - 0.2, cab.y, cab.z); box(mBldg2, 0.6, cab.y - 1.4, 0.6, cab.x + 1.5, (cab.y - 1.4) / 2, cab.z + 3.5); box(mEdge, 3.4, 0.6, 1.4, cab.x + 1.5, 0.3, cab.z + 3.5);
+  });
+  for (const z of [-21.5, -28.5]) strip(mMark, -176, z, 218, z, 0.25, 0.07);
+  for (let x = -176; x < 218; x += 6) strip(mMark, x, BHS.zRoad, x + 3, BHS.zRoad, 0.2, 0.07);
+  strip(mMark, -200, -118, 236, -118, 0.45, 0.07);
+  for (const x of [-185, -95, 0, 95, 185]) { box(mEdge, 0.5, 27, 0.5, x, 13.5, -19.5); box(mEdge, 3, 0.6, 1.2, x, 27, -20.2); }                // 照明柱
+  const ms = flush(gApron, { cast: true, receive: true }); for (const m of ms) if (m.material === mMark) m.castShadow = false;
+  for (let i = 0; i < 2; i++) { const ac = new THREE.Mesh(acGeo, mAircraft); ac.visible = false; ac.rotation.order = 'YXZ'; gApron.add(ac); runwayAc.push({ mesh: ac, t0: -1, kind: 0 }); }
+
+  // ---- 夜間の灯火（ダークテーマだけ表示）----
+  const pos = [], col = [], C = (r, g, b) => [r, g, b], put = (x, y, z, c) => { pos.push(x, y, z); col.push(c[0], c[1], c[2]); };
+  const white = C(1, 0.93, 0.78), green = C(0.2, 1, 0.5), blue = C(0.25, 0.5, 1), red = C(1, 0.2, 0.15), amber = C(1, 0.72, 0.3);
+  for (const r of RUNWAYS) {
+    const cs = Math.cos(r.rot), sn = Math.sin(r.rot), P2 = (l, o) => [r.x + l * cs + o * sn, r.z - l * sn + o * cs];
+    for (let l = -r.len / 2; l <= r.len / 2; l += 18) { for (const o of [-12.6, 12.6]) { const p = P2(l, o); put(p[0], 0.5, p[1], white); } }
+    for (let l = -r.len / 2 + 9; l <= r.len / 2; l += 9) { const p = P2(l, 0); put(p[0], 0.4, p[1], l > r.len / 2 - 90 ? red : white); }
+    for (let o = -11; o <= 11; o += 2.2) { let p = P2(-r.len / 2 - 1, o); put(p[0], 0.5, p[1], green); p = P2(r.len / 2 + 1, o); put(p[0], 0.5, p[1], red); }
+    for (let l = 10; l < 110; l += 10) { const p = P2(-r.len / 2 - l, 0); put(p[0], 0.6, p[1], white); }                                        // 進入灯
+  }
+  for (const z of [-168, -256]) for (let x = -420; x <= 520; x += 11) { put(x, 0.4, z, green); if (((x + 420) / 11) % 2 === 0) { put(x, 0.4, z - 9.4, blue); put(x, 0.4, z + 9.4, blue); } }
+  for (const x of [-360, -150, 60, 270, 470]) for (let z = -205; z <= -145; z += 10) put(x, 0.4, z, green);
+  for (let x = -200; x <= 236; x += 12) put(x, 0.4, -118, green);
+  for (let x = LAY.X0; x <= LAY.X1; x += 8.6) { put(x, YU + 11, LAY.ZL + 0.5, amber); put(x, YU + 4.6, LAY.ZA - 0.2, amber); }
+  for (const x of [-185, -95, 0, 95, 185]) for (const dx of [-1, 0, 1]) put(x + dx, 27.4, -20.6, white);
+  for (let z = -20; z < 320; z += 17) put(208, YU + 10, z, amber);
+  const pg = new THREE.BufferGeometry(); pg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); pg.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  nightPts = new THREE.Points(pg, new THREE.PointsMaterial({ size: 5.5, map: dotTex, vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true, fog: false }));
+  nightPts.frustumCulled = false; gNight.add(nightPts);
+  const floodTex = canvasTex(128, 128, (g, w) => { const r = g.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2); r.addColorStop(0, 'rgba(255,236,200,.5)'); r.addColorStop(1, 'rgba(255,236,200,0)'); g.fillStyle = r; g.fillRect(0, 0, w, w); });
+  for (const x of [-185, -95, 0, 95, 185]) { const d = new THREE.Mesh(new THREE.PlaneGeometry(190, 150).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ map: floodTex, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.55 })); d.position.set(x, 0.2, -70); d.renderOrder = 1; gNight.add(d); }
+  themeHooks.push(() => { gNight.visible = TH.dark; mAircraft.emissive.set(TH.dark ? 0x1a222b : 0x000000); });
+}
+
+// 駐機・プッシュバック・離着陸を、便スケジュールと時計から決める
+function updateAircraft(sim, world) {
+  const t = sim.t; let moved = false;
+  for (let gi = 0; gi < LAY.gates.length; gi++) {
+    const ac = aircraft[gi], g = LAY.gates[gi]; let show = false, z = LAY.standNoseZ - 20.5, x = g.sx;
+    for (const f of world.flights) {
+      if (f.gate !== gi) continue;
+      const a = f.arr == null ? -1e9 : f.arr;
+      if (t >= a - 3 && t <= f.dep + 3.5) {
+        show = true;
+        if (t < a) z -= (a - t) / 3 * 78; else if (t > f.dep) { const k = (t - f.dep) / 3.5; z -= 78 * k * k; }
+        break;
+      }
+    }
+    if (ac.visible !== show || Math.abs(ac.position.z - z) > 0.01) moved = true;
+    ac.visible = show; ac.position.set(x, 0, z);
+  }
+  // 滑走路: 出発の 5 分後に A 滑走路から離陸、到着の 7 分前に C 滑走路へ着陸
+  for (let i = 0; i < 2; i++) {
+    const ra = runwayAc[i], m = ra.mesh, r = RUNWAYS[i ? 1 : 0]; let on = false;
+    for (const f of world.flights) {
+      const t0 = i ? (f.arr == null ? -1e9 : f.arr - 7) : f.dep + 5, k = (t - t0) / 2.6;
+      if (k < 0 || k > 1) continue;
+      on = true;
+      if (!i) { const s = k * k; m.position.set(r.x - r.len / 2 + 40 + s * 1100, Math.max(0, (s - 0.45)) * 420, r.z); m.rotation.set(s > 0.4 ? -Math.min(0.2, (s - 0.4) * 1.2) : 0, Math.PI / 2, 0); }
+      else { const s = 1 - (1 - k) * (1 - k); m.position.set(r.x + r.len / 2 + 300 - s * 1000, Math.max(0, 0.32 - s) * 300, r.z); m.rotation.set(s < 0.32 ? 0.05 : 0, -Math.PI / 2, 0); }
+      break;
+    }
+    m.visible = on;
+  }
+  if (moved) renderer.shadowMap.needsUpdate = true;
+}
+// =====================================================================
+// 60 flows : 旅客・手荷物・トーイングトラクターを InstancedMesh で描く（表示中のモードのシミュレーションを読む）
+// =====================================================================
+const PAX_MAX = 5000, BAG_MAX = 5000, TUG_MAX = 24;
+const PAX_KEYS = ['pax', 'pax-q', 'pax-x', 'pax-arr'], BAG_KEYS = ['bag', 'bag-re', 'bag-ng', 'bag-ebs', 'bag-arr'];
+let paxMesh, bagMesh, tugMesh, dollyMesh, paxGlow, bagGlow, paxMatLit, paxMatFlat, bagMatLit, bagMatFlat;
+const paxRGB = new Float32Array(12), bagRGB = new Float32Array(15);
+function initInstanced(mesh, max, sx, sy, sz) {
+  const m = mesh.instanceMatrix.array; for (let i = 0; i < max; i++) { const o = i * 16; m[o] = sx; m[o + 5] = sy; m[o + 10] = sz; m[o + 15] = 1; }
+  mesh.setColorAt(0, new THREE.Color(1, 1, 1)); mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); mesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
+  mesh.frustumCulled = false; mesh.count = 0;
+}
+function glowPoints(max, size) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(max * 3), 3).setUsage(THREE.DynamicDrawUsage));
+  g.setAttribute('color', new THREE.BufferAttribute(new Float32Array(max * 3), 3).setUsage(THREE.DynamicDrawUsage));
+  const p = new THREE.Points(g, new THREE.PointsMaterial({ size, map: dotTex, vertexColors: true, transparent: true, opacity: 0.42, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: true }));
+  p.frustumCulled = false; p.renderOrder = 5; g.setDrawRange(0, 0); return p;
+}
+function buildFlows() {
+  paxMatLit = new THREE.MeshLambertMaterial(); paxMatFlat = new THREE.MeshBasicMaterial({ transparent: false });
+  bagMatLit = new THREE.MeshLambertMaterial(); bagMatFlat = new THREE.MeshBasicMaterial();
+  paxMesh = new THREE.InstancedMesh(new THREE.CapsuleGeometry(0.36, 0.95, 2, 7), paxMatLit, PAX_MAX); initInstanced(paxMesh, PAX_MAX, 1, 1, 1);
+  bagMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1.3, 0.85, 1.0), bagMatLit, BAG_MAX); initInstanced(bagMesh, BAG_MAX, 1, 1, 1);
+  const mTug = M('sign', { roughness: 0.7 }), mDolly = M('s-edge');
+  tugMesh = new THREE.InstancedMesh(mergeGeometries([new THREE.BoxGeometry(1.5, 0.9, 2.6).translate(0, 0.75, 0), new THREE.BoxGeometry(1.3, 0.7, 1.0).translate(0, 1.5, -0.5)]), mTug, TUG_MAX);
+  dollyMesh = new THREE.InstancedMesh(mergeGeometries([new THREE.BoxGeometry(1.9, 0.22, 2.9).translate(0, 0.55, 0), new THREE.BoxGeometry(1.9, 0.5, 0.1).translate(0, 0.9, 1.4), new THREE.BoxGeometry(1.9, 0.5, 0.1).translate(0, 0.9, -1.4)]), mDolly, TUG_MAX * 4);
+  for (const m of [tugMesh, dollyMesh]) { m.instanceMatrix.setUsage(THREE.DynamicDrawUsage); m.frustumCulled = false; m.count = 0; }
+  paxGlow = glowPoints(PAX_MAX, 3.4); bagGlow = glowPoints(BAG_MAX, 4.6); bagGlow.material.opacity = 0.6;
+  world3d.add(paxMesh, bagMesh, tugMesh, dollyMesh, paxGlow, bagGlow);
+  themeHooks.push(() => {
+    PAX_KEYS.forEach((k, i) => TH.c[k].toArray(paxRGB, i * 3)); BAG_KEYS.forEach((k, i) => TH.c[k].toArray(bagRGB, i * 3));
+    // 夜は発光（陰影なし + 加算のにじみ）、昼は模型に刺したピンのように陰影をつける
+    paxMesh.material = TH.dark ? paxMatFlat : paxMatLit; bagMesh.material = TH.dark ? bagMatFlat : bagMatLit;
+    paxGlow.visible = bagGlow.visible = TH.dark; applyGhostToFlows();
+  });
+}
+function applyGhostToFlows() {
+  for (const m of [paxMatLit, paxMatFlat]) { m.transparent = upperGhost > 0.02; m.opacity = lerp(1, 0.16, upperGhost); m.depthWrite = upperGhost < 0.5; m.needsUpdate = true; }
+  if (paxGlow) paxGlow.material.opacity = lerp(0.42, 0.06, upperGhost);
+  if (HEAT.mesh) HEAT.mesh.material.opacity = lerp(TH.dark ? 0.8 : 1, 0.12, upperGhost);
+}
+const _d = new THREE.Object3D(), _pose = { x: 0, z: 0, hx: 0, hz: 0 };
+function bridgeY(a, f) {           // 搭乗橋の上では機体ドアの高さへ下る
+  if (a.z > LAY.ZA || LAY.gates[f.gate].remote) return YU;
+  return lerp(YU, DOOR_Y, clamp((LAY.ZA - a.z) / 31.5, 0, 1));
+}
+function updateFlows(sim) {
+  const t = sim.t;
+  // ---- 旅客 ----
+  let arr = sim.pax, n = Math.min(arr.length, PAX_MAX), m = paxMesh.instanceMatrix.array, col = paxMesh.instanceColor.array;
+  const gp = paxGlow.geometry.attributes.position.array, gc = paxGlow.geometry.attributes.color.array, dark = TH.dark;
+  for (let i = 0; i < n; i++) {
+    const a = arr[i], st = a.st; let y = YU, k = a.kind;
+    if (k === 3) { if (a.lvl) y = 0; else if (a.z < LAY.ZA) y = bridgeY(a, a.f); else if (a.x < -160 && a.z > 58) y = lerp(YU, 0, clamp((a.z - 58) / 8, 0, 1)); }
+    else {
+      if (st === S.BOARD) y = bridgeY(a, a.f);
+      if (k === 0 && (st === S.Q_SEC || st === S.Q_DROP || st === S.Q_IMM) && t - a.t0 > 3) k = 1;
+    }
+    const o = i * 16, c = i * 3, kc = k * 3; m[o + 12] = a.x; m[o + 13] = y + 0.84; m[o + 14] = a.z;
+    col[c] = paxRGB[kc]; col[c + 1] = paxRGB[kc + 1]; col[c + 2] = paxRGB[kc + 2];
+    if (dark) { gp[c] = a.x; gp[c + 1] = y + 1.2; gp[c + 2] = a.z; gc[c] = paxRGB[kc]; gc[c + 1] = paxRGB[kc + 1]; gc[c + 2] = paxRGB[kc + 2]; }
+  }
+  paxMesh.count = n; paxMesh.instanceMatrix.needsUpdate = true; paxMesh.instanceColor.needsUpdate = true;
+  if (dark) { paxGlow.geometry.setDrawRange(0, n); paxGlow.geometry.attributes.position.needsUpdate = true; paxGlow.geometry.attributes.color.needsUpdate = true; }
+  // ---- 手荷物 ----
+  arr = sim.bags; n = Math.min(arr.length, BAG_MAX); m = bagMesh.instanceMatrix.array; col = bagMesh.instanceColor.array;
+  const bp = bagGlow.geometry.attributes.position.array, bc = bagGlow.geometry.attributes.color.array;
+  for (let i = 0; i < n; i++) {
+    const b = arr[i], o = i * 16, c = i * 3, kc = (b.missed ? 2 : b.c) * 3; m[o + 12] = b.x; m[o + 13] = b.y; m[o + 14] = b.z;
+    col[c] = bagRGB[kc]; col[c + 1] = bagRGB[kc + 1]; col[c + 2] = bagRGB[kc + 2];
+    if (dark) { bp[c] = b.x; bp[c + 1] = b.y + 0.3; bp[c + 2] = b.z; const dim = b.c === 3 ? 0.35 : 1; bc[c] = bagRGB[kc] * dim; bc[c + 1] = bagRGB[kc + 1] * dim; bc[c + 2] = bagRGB[kc + 2] * dim; }
+  }
+  bagMesh.count = n; bagMesh.instanceMatrix.needsUpdate = true; bagMesh.instanceColor.needsUpdate = true;
+  if (dark) { bagGlow.geometry.setDrawRange(0, n); bagGlow.geometry.attributes.position.needsUpdate = true; bagGlow.geometry.attributes.color.needsUpdate = true; }
+  // ---- トーイングトラクターとドーリー ----
+  let ti = 0, di = 0;
+  for (const list of [sim.tugs, sim.arrTugs]) for (const tug of list) {
+    if (ti >= TUG_MAX) break;
+    tugPose(tug, 0, _pose); _d.position.set(_pose.x, 0, _pose.z); _d.rotation.y = Math.atan2(_pose.hx, _pose.hz); _d.updateMatrix(); tugMesh.setMatrixAt(ti++, _d.matrix);
+    for (let k = 0; k < 4; k++) { tugPose(tug, 3.6 + k * 3.3, _pose); _d.position.set(_pose.x, 0, _pose.z); _d.rotation.y = Math.atan2(_pose.hx, _pose.hz); _d.updateMatrix(); dollyMesh.setMatrixAt(di++, _d.matrix); }
+  }
+  tugMesh.count = ti; dollyMesh.count = di; tugMesh.instanceMatrix.needsUpdate = true; dollyMesh.instanceMatrix.needsUpdate = true;
+  // ---- 稼働灯 ----
+  const cOn = TH.c['good'], cOff = TH.c['s-edge'], cBad = TH.c['bad'];
+  for (let c = 0; c < 3; c++) { const cp = sim.cp[c], open = Math.min(cp.open, cp.limit); for (let j = 0; j < 6; j++) laneLights.setColorAt(c * 6 + LANE_ORDER[j], j < open ? cOn : (cp.limit < 99 && j < cp.open ? cBad : cOff)); }
+  laneLights.instanceColor.needsUpdate = true;
+  for (let l = 0; l < 3; l++) edsLights.setColorAt(l, sim.scn.edsDown === l ? cBad : cOn);
+  edsLights.instanceColor.needsUpdate = true;
+}
+// =====================================================================
+// 62 heat & labels : 床の混雑ヒートマップ（上階）と、CSS2DRenderer のラベル（実測値つき）
+// =====================================================================
+const HEAT = { cell: 4, nx: 0, nz: 0, x0: LAY.X0, z0: LAY.ZA, grid: null, acc: null, tex: null, mesh: null, tick: 0 };
+function buildHeat() {
+  HEAT.nx = Math.ceil((LAY.X1 - LAY.X0) / HEAT.cell); HEAT.nz = Math.ceil((LAY.ZL + 4 - LAY.ZA) / HEAT.cell);
+  const n = HEAT.nx * HEAT.nz; HEAT.grid = new Float32Array(n); HEAT.acc = new Float32Array(n); HEAT.tmp = new Float32Array(n);
+  HEAT.data = new Uint8Array(n * 4); HEAT.tex = new THREE.DataTexture(HEAT.data, HEAT.nx, HEAT.nz, THREE.RGBAFormat);
+  HEAT.tex.magFilter = HEAT.tex.minFilter = THREE.LinearFilter; HEAT.tex.colorSpace = THREE.SRGBColorSpace; HEAT.tex.needsUpdate = true;
+  const w = HEAT.nx * HEAT.cell, d = HEAT.nz * HEAT.cell, g = new THREE.PlaneGeometry(w, d).rotateX(-Math.PI / 2);
+  // PlaneGeometry の UV は v が奥（-z）で 1 になるため、v を反転して z0 側を行 0 にそろえる
+  const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setY(i, 1 - uv.getY(i));
+  HEAT.mesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: HEAT.tex, transparent: true, depthWrite: false, toneMapped: false }));
+  HEAT.mesh.position.set(LAY.X0 + w / 2, YU + 0.07, LAY.ZA + d / 2); HEAT.mesh.renderOrder = 2.5; gUpper.add(HEAT.mesh);
+}
+// 密度（人/セル）→ 色。黄 → 橙 → 紅の単色相に近い連続スケール
+const HEAT_STOPS = [[0.6, 255, 200, 40, 0], [2.5, 255, 190, 30, 110], [5.5, 247, 120, 20, 165], [9, 226, 50, 50, 200], [14, 180, 20, 90, 225]];
+function updateHeat(sim, force) {
+  if (!HEAT.mesh.visible) return;
+  if (!force && (HEAT.tick++ % 5)) return;
+  const { nx, nz, cell, grid, acc, tmp, data } = HEAT; acc.fill(0);
+  // 搭乗待ちで着席している旅客は数えない（待ち行列と通行だけを見る）
+  for (const a of sim.pax) { if (a.lvl || a.z < LAY.ZA || a.st === S.LOUNGE) continue; const i = Math.floor((a.x - HEAT.x0) / cell), j = Math.floor((a.z - HEAT.z0) / cell); if (i >= 0 && i < nx && j >= 0 && j < nz) acc[j * nx + i]++; }
+  const k = force ? 1 : 0.22;
+  for (let j = 0; j < nz; j++) for (let i = 0; i < nx; i++) {            // 3×3 の平滑化
+    let s = 0, wsum = 0;
+    for (let dj = -1; dj <= 1; dj++) for (let di = -1; di <= 1; di++) { const ii = i + di, jj = j + dj; if (ii < 0 || jj < 0 || ii >= nx || jj >= nz) continue; const w = (di || dj) ? 0.6 : 1; s += acc[jj * nx + ii] * w; wsum += w; }
+    tmp[j * nx + i] = s / wsum * 1.6;
+  }
+  for (let q = 0; q < nx * nz; q++) {
+    const v = grid[q] += (tmp[q] - grid[q]) * k; let r = 0, g = 0, b = 0, al = 0;
+    if (v > HEAT_STOPS[0][0]) {
+      let s = 0; while (s < HEAT_STOPS.length - 2 && v > HEAT_STOPS[s + 1][0]) s++;
+      const A = HEAT_STOPS[s], Bq = HEAT_STOPS[s + 1], u = clamp((v - A[0]) / (Bq[0] - A[0]), 0, 1);
+      r = A[1] + (Bq[1] - A[1]) * u; g = A[2] + (Bq[2] - A[2]) * u; b = A[3] + (Bq[3] - A[3]) * u; al = A[4] + (Bq[4] - A[4]) * u;
+    }
+    const o = q * 4; data[o] = r; data[o + 1] = g; data[o + 2] = b; data[o + 3] = al;
+  }
+  HEAT.tex.needsUpdate = true;
+}
+
+// ---- ラベル ----
+const labels = [], liveEls = {};
+const gLabels = new THREE.Group(); world3d.add(gLabels);
+function addLabel(html, x, y, z, cls, tier, prio) {
+  const el = document.createElement('div'); el.className = 'lbl ' + (cls || ''); el.innerHTML = html;
+  for (const s of el.querySelectorAll('[data-live]')) liveEls[s.dataset.live] = { el: s, box: el, text: '' };
+  const o = new CSS2DObject(el); o.position.set(x, y, z); o.center.set(0.5, 1); gLabels.add(o); const inside = x > LAY.X0 && x < LAY.X1 && z > LAY.ZA - 1 && z < LAY.ZL + 4;
+  labels.push({ o, el, tier: tier === 0 ? 0 : (tier || 1), lower: y < YU, under: y < YU && inside, upper: y >= YU && inside, prio: prio || 0 });
+  return o;
+}
+function setLive(key, text, cls) {
+  const L = liveEls[key]; if (!L) return;
+  if (L.text !== text) { L.text = text; L.el.textContent = text; }
+  const want = cls || ''; if (L.cls !== want) { if (L.cls) L.box.classList.remove(L.cls); if (want) L.box.classList.add(want); L.cls = want; }
+}
+let labelsOn = true;
+const _lv = new THREE.Vector3(), _kept = [];
+// 距離で出すラベルを絞り、画面上で重なるものは優先度の低い方を隠す
+function updateLabelVisibility() {
+  const dist = camera.position.distanceTo(controls.target), narrow = isNarrow.matches, w = wrapEl.clientWidth, h = wrapEl.clientHeight;
+  const t2 = narrow ? 190 : 360, t3 = narrow ? 110 : 210, t1 = narrow ? 330 : 1e9;      // スマホ幅の全景では、検査場のラベルだけを出す
+  _kept.length = 0;
+  const ghost = upperGhostTarget > 0.5;
+  // 上階を透かしているときは上階のラベルを隠し、通常は床の下にある細かいラベルを隠す
+  const cands = labels.filter(L => labelsOn && !(ghost ? L.upper : (L.under && (L.tier > 1 || dist < 300))) && (L.tier === 0 ? false : L.tier === 1 ? (dist < t1 || L.prio >= 2) : L.tier === 2 ? dist < t2 : L.tier === 3 ? dist < t3 : dist > 260));
+  const lowFirst = ghost;                         // 上階を透かしているときは下階のラベルを優先する
+  cands.sort((a, b) => (a.tier - b.tier) || (b.prio - a.prio) || ((a.lower === lowFirst ? 0 : 1) - (b.lower === lowFirst ? 0 : 1)) || ((b.o.visible ? 1 : 0) - (a.o.visible ? 1 : 0)));
+  for (const L of labels) L.want = false;
+  for (const L of cands) {
+    _lv.copy(L.o.position).project(camera); if (_lv.z > 1 || Math.abs(_lv.x) > 1.1 || Math.abs(_lv.y) > 1.1) continue;
+    const sx = (_lv.x * 0.5 + 0.5) * w, sy = (-_lv.y * 0.5 + 0.5) * h;
+    if (L.o.visible && L.el.offsetWidth) { L.w = L.el.offsetWidth; L.h = L.el.offsetHeight; }
+    const bw = (L.w || L.el.textContent.length * 6.5 + 14) + 6, bh = (L.h || 32) + 4, x0 = sx - bw / 2, y0 = sy - bh;
+    let hit = false; for (const k of _kept) if (x0 < k[2] && x0 + bw > k[0] && y0 < k[3] && y0 + bh > k[1]) { hit = true; break; }
+    if (hit) continue; _kept.push([x0, y0, x0 + bw, y0 + bh]); L.want = true;
+  }
+  for (const L of labels) if (L.tier > 0 && L.o.visible !== L.want) L.o.visible = L.want;
+}
+function updateLiveLabels(sim, world) {
+  const t = sim.t;
+  for (let c = 0; c < 3; c++) {
+    const cp = sim.cp[c], open = Math.min(cp.open, cp.limit), w = cp.q.length * P.secSvcMean / Math.max(0.5, open);
+    setLive('cp' + c, `レーン ${open}/${LAY.cpLanes}・待ち ${cp.q.length} 人（約 ${Math.round(w)} 分）`, cp.limit < 99 ? 'down' : w >= 8 ? 'alert' : '');
+  }
+  for (let i = 0; i < 6; i++) setLive('isl' + i, sim.isl[i].q.length ? `待ち ${sim.isl[i].q.length} 人` : '');
+  for (let l = 0; l < 3; l++) { const e = sim.eds[l], down = sim.scn.edsDown === l; setLive('eds' + l, down ? `停止中・滞留 ${e.q.length} 個` : `待ち ${e.q.length} 個`, down ? 'down' : e.q.length > 30 ? 'alert' : ''); }
+  let re = 0; for (const b of sim.bags) if (b.st === B.LOOP && b.dest === D.NONE) re++;
+  setLive('loop', `トレイ ${P.loopCap} のうち ${sim.loopN} 個・再循環 ${re} 個`, re > 25 ? 'alert' : '');
+  setLive('ebs', `保管 ${sim.ebs.n} 個 / ${sim.ebs.cells.length} 個`);
+  setLive('mes', `待ち ${sim.mes.q.length} 個`, sim.mes.q.length > 12 ? 'alert' : '');
+  setLive('hold', `${sim.holdN} 個`, sim.holdN > 20 ? 'alert' : '');
+  for (let k = 0; k < 12; k++) { const f = sim.lat[k].f; setLive('lat' + k, f >= 0 ? world.flights[f].code : ''); }
+  for (let gi = 0; gi < LAY.gates.length; gi++) {
+    let txt = ''; let best = null;
+    for (const f of world.flights) if (f.gate === gi && f.dep > t - 1 && (!best || f.dep < best.dep)) best = f;
+    if (best && best.dep - t < 150) { const fs = sim.flightState(best.id); txt = `${best.code} ${hhmm(best.dep)}` + (t >= best.dep - P.boardStart ? `・搭乗 ${fs.boarded}/${best.paxOut}` : ''); }
+    setLive('gate' + gi, txt);
+  }
+}
+
+// ---- 手荷物 1 個の追跡（RFID のタグ番号で、預け入れから搭載までを追う）----
+// タグは 10 桁（先頭 1 桁 + 航空会社コード 3 桁 + 連番 6 桁）。999 は架空の航空会社コード
+let trackBag = null, trackObj = null, trackL = null, trackUid = -1, trackText = '';
+const tagNo = uid => '0999' + String(uid % 1000000).padStart(6, '0');
+function bagStatus(b, sim) {
+  switch (b.st) {
+    case B.MOVE: return b.next === NEXT.EDS_Q ? 'コレクターを搬送中' : b.next === NEXT.LAT_IN ? `ラテラル ${b.lat + 1} へ搬送中` : b.next === NEXT.EBS_IN ? 'EBS へ搬送中' : b.next === NEXT.HOLD_IN ? '仮置き場へ搬送中' : '搬送中';
+    case B.EDS_Q: return sim.scn.edsDown === b.line ? `EDS ${b.line + 1} 号機の停止で滞留中` : `EDS ${b.line + 1} 号機の検査待ち`;
+    case B.L2: return 'EDS の画像判定中';
+    case B.IND_Q: return 'ソーターへの投入待ち';
+    case B.LOOP: return b.dest === D.NONE ? 'ソーターを再循環中' : b.dest === D.LAT ? `ソーター上（行き先: ラテラル ${b.lat + 1}）` : b.dest === D.EBS ? 'ソーター上（行き先: EBS）' : b.dest === D.MES ? 'タグの読取不良（行き先: 手作業コード入力）' : 'ソーター上（行き先: 仮置き場）';
+    case B.MES_Q: case B.MES: return '手作業でコードを入力中';
+    case B.EBS: return 'EBS で保管中';
+    case B.HOLD: return '仮置き場で保管中';
+    case B.LAT: return `ラテラル ${b.lat + 1} で積み付け待ち`;
+    case B.TRAIN: return 'ドーリーで機側へ移動中';
+  }
+  return '';
+}
+function updateTrack(sim) {
+  if (!trackObj) { trackObj = addLabel('<span class="num" id="trkTag"></span><small id="trkSt"></small>', 0, 0, 0, 'track', 0); trackObj.center.set(0.5, 1.25); trackL = labels[labels.length - 1]; }
+  const L = trackL;                          // 追跡ラベルは重なり判定の対象から外す（tier 0）
+  if (trackBag && (trackBag.st === B.GONE || trackBag.sim !== sim)) {
+    const uid = trackBag.st === B.GONE ? -1 : trackUid; trackBag = null;
+    if (uid >= 0) for (const b of sim.bags) if (b.uid === uid) { trackBag = b; break; }       // モードを切り替えたら、同じタグの手荷物をもう一方の世界で探す
+  }
+  if (!trackBag) {                           // 預け入れ直後の手荷物から 1 個選ぶ
+    let pick = null; for (const b of sim.bags) if (b.uid !== undefined && b.st === B.MOVE && b.next === NEXT.EDS_Q && b.f.dep - sim.t > 50) { pick = b; if ((b.uid % 7) === 3) break; }
+    if (!pick) for (const b of sim.bags) if (b.uid !== undefined && b.st === B.LOOP && !b.missed) { pick = b; break; }
+    trackBag = pick; if (pick) { trackUid = pick.uid; trackText = ''; }
+  }
+  // 全景では出さない（床の下の 1 個を指しても分かりにくいため）。近づくか、上階を透かしたときに出す
+  const b = trackBag; trackObj.visible = !!b && labelsOn && (upperGhostTarget > 0.5 || camera.position.distanceTo(controls.target) < (isNarrow.matches ? 200 : 320));
+  if (!b) return;
+  b.sim = sim; trackObj.position.set(b.x, b.y + 0.6, b.z);
+  const txt = `${b.f.code} 便（${hhmm(b.f.dep)} 発）・${b.missed ? '出発に間に合わず、次の便へ振替' : bagStatus(b, sim)}`;
+  if (txt !== trackText) { trackText = txt; L.el.querySelector('#trkTag').textContent = 'タグ ' + tagNo(b.uid); L.el.querySelector('#trkSt').textContent = txt; }
+}
+// =====================================================================
+// 70 ui (指標・グラフ) : 2 つのシミュレーションの実測値を並べ、差を出す
+// =====================================================================
+const SEED = 20261124, START_AT = 17 * 60 + 8;     // 最初に見せる時刻（夕方の出発ピーク。05:00 からここまでを起動時に計算する）
+let world, sims, active = 1, speed = 1, playing = true, win60 = false;
+const fmt = (v, dec) => v.toLocaleString('ja-JP', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+const KPI_ROWS = [
+  { id: 'wait', label: '保安検査の平均待ち', unit: '分', dec: 1, better: -1, get: v => v.waitAvg },
+  { id: 'maxq', label: '保安検査の最大待ち人数', sub: '3 か所の合計', unit: '人', dec: 0, better: -1, get: v => v.maxQ },
+  { id: 'lane', label: '稼働レーンの延べ人時', sub: '1 レーン 5 人で換算', unit: '人時', dec: 0, better: -1, get: v => v.laneHours },
+  { id: 'bag', label: '手荷物の処理時間', sub: '預け入れ → メイクアップ。保管時間を除く', unit: '分', dec: 1, better: -1, get: v => v.bagTime },
+  { id: 'mis', label: 'ミスハンドリング', sub: '出発便に積めなかった手荷物', unit: '件/1,000個', dec: 1, better: -1, get: v => v.mishandled },
+  { id: 'clean', label: '全量を搭載できた便', sub: '出発 8 分前までに全個数を搭載', unit: '%', dec: 0, better: 1, pt: true, get: v => v.clean },
+  { id: 'pax', label: '保安検査の処理旅客数', sub: '直近 60 分', unit: '人/時', dec: 0, better: 0, get: v => v.pax60 },
+  { id: 'bags', label: '搭載した手荷物数', sub: '直近 60 分', unit: '個/時', dec: 0, better: 0, get: v => v.bag60 },
+];
+function buildKpiTable() {
+  $('kpiBody').innerHTML = KPI_ROWS.map(r => `<tr><th scope="row">${r.label}<small>${r.sub ? r.sub + '・' : ''}${r.unit}</small></th><td id="k-${r.id}-b">–</td><td id="k-${r.id}-a">–</td><td class="d" id="k-${r.id}-d">–</td></tr>`).join('');
+}
+function diffText(r, b, a) {
+  if (r.pt) { const d = a - b; return { txt: (d > 0 ? '+' : d < 0 ? '−' : '±') + fmt(Math.abs(d), 0) + ' pt', sign: Math.abs(d) < 0.5 ? 0 : Math.sign(d) * r.better }; }
+  if (!(b > 0)) return { txt: '–', sign: 0 };
+  const d = (a - b) / b * 100; return { txt: (d > 0 ? '+' : d < 0 ? '−' : '±') + fmt(Math.abs(d), 0) + '%', sign: Math.abs(d) < 1 ? 0 : Math.sign(d) * r.better };
+}
+function updateKpi() {
+  const vb = win60 ? sims[0].view60() : sims[0].view(), va = win60 ? sims[1].view60() : sims[1].view();
+  for (const r of KPI_ROWS) {
+    const b = r.get(vb), a = r.get(va), d = diffText(r, b, a), eb = $(`k-${r.id}-b`), ea = $(`k-${r.id}-a`), ed = $(`k-${r.id}-d`);
+    const none = (r.id === 'mis' || r.id === 'clean') && !vb.closedFlights;       // 出発した便がまだ無い
+    eb.textContent = none ? '–' : fmt(b, r.dec); ea.textContent = none ? '–' : fmt(a, r.dec); ed.textContent = none ? '–' : d.txt;
+    ed.className = 'd' + (r.better === 0 ? '' : d.sign > 0 ? ' good' : d.sign < 0 ? ' bad' : '');
+    eb.className = active === 0 ? 'on' : ''; ea.className = active === 1 ? 'on' : '';
+  }
+  // 見出し（結論）: 保安検査の平均待ちの差を実測値から書く
+  const w = diffText(KPI_ROWS[0], vb.waitAvg, va.waitAvg), l = diffText(KPI_ROWS[2], vb.laneHours, va.laneHours);
+  if (vb.secN < 200) { $('hlMain').textContent = '計測中'; $('hlSub').textContent = '保安検査を通過した旅客が 200 人を超えると、差を表示します。'; }
+  else {
+    $('hlMain').innerHTML = `保安検査の平均待ち <em class="${w.sign > 0 ? 'good' : w.sign < 0 ? 'bad' : ''}">${w.txt}</em>`;
+    $('hlSub').innerHTML = `従来運用 <span class="num">${fmt(vb.waitAvg, 1)}</span> 分 → AI 最適化 <span class="num">${fmt(va.waitAvg, 1)}</span> 分。レーンの延べ人時は <span class="num">${l.txt}</span>、ミスハンドリングは <span class="num">${fmt(vb.mishandled, 1)}</span> → <span class="num">${fmt(va.mishandled, 1)}</span> 件/1,000個（${win60 ? '直近 60 分' : '05:00 から ' + hhmm(sims[0].t) + ' まで'}）。`;
+  }
+}
+
+// ---- グラフ（canvas 2D）。軸と目盛りは実際の値から引く ----
+function niceMax(v) { if (v <= 0) return 1; const p = Math.pow(10, Math.floor(Math.log10(v))), n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 3 ? 3 : n <= 5 ? 5 : 10) * p; }
+function setupCanvas(cv) {
+  const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1), w = Math.max(10, Math.round(r.width)), h = Math.max(10, Math.round(r.height));
+  if (cv.width !== w * dpr || cv.height !== h * dpr) { cv.width = w * dpr; cv.height = h * dpr; }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h); return { g, w, h };
+}
+function chartFrame(cv, ymax, unit) {
+  const { g, w, h } = setupCanvas(cv), L = 30, R = 8, T = 6, Bm = 16, pw = w - L - R, ph = h - T - Bm;
+  const X = t => L + (t - DAY0) / (DAY1 - DAY0) * pw, Y = v => T + ph - Math.min(1, v / ymax) * ph;
+  g.font = '10px "B612", "Helvetica Neue", Arial, sans-serif'; g.textBaseline = 'middle';
+  g.strokeStyle = TH.css['grid']; g.fillStyle = TH.css['ink-3']; g.lineWidth = 1;
+  for (let i = 0; i <= 2; i++) { const v = ymax * i / 2, y = Math.round(Y(v)) + 0.5; g.beginPath(); g.moveTo(L, y); g.lineTo(w - R, y); g.stroke(); g.textAlign = 'right'; g.fillText(fmt(v, ymax < 4 ? 1 : 0), L - 4, y); }
+  g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  for (let hh = 6; hh <= 24; hh += 3) {
+    const x = Math.round(X(hh * 60)) + 0.5; g.beginPath(); g.moveTo(x, T + ph); g.lineTo(x, T + ph + 3); g.stroke();
+    if (hh % 6 === 0 || pw > 420) { g.textAlign = hh === 24 ? 'right' : 'center'; g.fillText(String(hh).padStart(2, '0') + ':00', hh === 24 ? w - R + 6 : x, h - 2); }
+  }
+  return { g, w, h, X, Y, L, R, T, ph, pw };
+}
+function nowLine(f, t) { const { g, X, T, ph } = f, x = Math.round(X(t)) + 0.5; g.strokeStyle = TH.css['ink']; g.lineWidth = 1; g.beginPath(); g.moveTo(x, T); g.lineTo(x, T + ph); g.stroke(); }
+function drawLines(cv, series, t, minMax) {
+  const nb = sims[0].bin15(); let mx = minMax;
+  for (const s of series) for (let b = 0; b <= nb; b++) if (s.n[b] > 0) mx = Math.max(mx, s.sum[b] / s.n[b]);
+  const f = chartFrame(cv, niceMax(mx)), { g, X, Y } = f;
+  for (const s of series) {
+    g.strokeStyle = s.color; g.lineWidth = s.on ? 2.2 : 1.4; g.globalAlpha = s.on ? 1 : 0.75; g.lineJoin = 'round'; g.beginPath(); let pen = false, lx = 0, ly = 0;
+    for (let b = 0; b <= nb; b++) { if (!(s.n[b] > 0)) continue; const x = X(DAY0 + b * 15 + (b === nb ? Math.min(7.5, (t - DAY0 - b * 15) / 2) : 7.5)), y = Y(s.sum[b] / s.n[b]); if (pen) g.lineTo(x, y); else g.moveTo(x, y); pen = true; lx = x; ly = y; }
+    g.stroke(); if (pen) { g.fillStyle = s.color; g.beginPath(); g.arc(lx, ly, s.on ? 3 : 2.2, 0, 6.3); g.fill(); }
+    g.globalAlpha = 1;
+  }
+  nowLine(f, t);
+}
+function updateCharts() {
+  const t = sims[0].t, k0 = sims[0].kpi, k1 = sims[1].kpi, nb = sims[0].bin15();
+  // 需要: 15 分ごとの到着（実績の棒）と、AI が使う到着予測（破線）
+  const fc = new Float32Array(NB); let mx = 10;
+  for (let b = 0; b < NB; b++) { for (let j = 0; j < 3; j++) fc[b] += world.fcTotal[b * 3 + j] || 0; mx = Math.max(mx, fc[b], k0.arrivals[b]); }
+  const f = chartFrame($('chDemand'), niceMax(mx)), { g, X, Y, T, ph } = f, bw = Math.max(1.5, (X(DAY0 + 15) - X(DAY0)) - 1);
+  g.fillStyle = TH.css['pax']; for (let b = 0; b <= nb; b++) { const v = k0.arrivals[b]; if (v > 0) g.fillRect(X(DAY0 + b * 15) + 0.5, Y(v), bw, T + ph - Y(v)); }
+  g.strokeStyle = TH.css['ink-3']; g.lineWidth = 1.2; g.setLineDash([3, 2]); g.beginPath();
+  for (let b = 0; b < NB; b++) { const x0 = X(DAY0 + b * 15), x1 = X(DAY0 + b * 15 + 15), y = Y(fc[b]); if (b) g.lineTo(x0, y); else g.moveTo(x0, y); g.lineTo(x1, y); }
+  g.stroke(); g.setLineDash([]); nowLine(f, t);
+  const cb = TH.css['base-c'], ca = TH.css['ai-c'];
+  drawLines($('chWait'), [{ sum: k0.waitSum, n: k0.waitN, color: cb, on: active === 0 }, { sum: k1.waitSum, n: k1.waitN, color: ca, on: active === 1 }], t, 4);
+  drawLines($('chBag'), [{ sum: k0.bagSeries, n: k0.bagSeriesN, color: cb, on: active === 0 }, { sum: k1.bagSeries, n: k1.bagSeriesN, color: ca, on: active === 1 }], t, 10);
+}
+// =====================================================================
+// 72 ui (ログ・出発便・操作) : モード切替、時間、シナリオ、表示の切替
+// =====================================================================
+let logSig = '', logView = 'log';
+function updateLog() {
+  const sim = sims[active], kinds = active ? ['ai', 'scn'] : ['ops', 'scn'];
+  const sig = active + ':' + sim.log.length + ':' + (sim.log.length ? sim.log[sim.log.length - 1].t : 0);
+  if (sig === logSig) return; logSig = sig;
+  // 舞台の上の 1 行表示: 表示中のモードで最後に起きた判断・事象
+  let last = null; for (let i = sim.log.length - 1; i >= 0; i--) if (kinds.includes(sim.log[i].kind)) { last = sim.log[i]; break; }
+  const tk = $('ticker'); tk.hidden = !last;
+  if (last) { tk.dataset.kind = last.kind; $('tickKind').textContent = last.kind === 'ai' ? 'AI の判断' : last.kind === 'scn' ? '事象' : '係員の対応'; $('tickTime').textContent = hhmm(last.t); $('tickText').textContent = last.text; }
+  const rows = []; for (let i = sim.log.length - 1; i >= 0 && rows.length < 40; i--) { const l = sim.log[i]; if (kinds.includes(l.kind)) rows.push(`<li class="${l.kind}"><time>${hhmm(l.t)}</time><p>${l.text}</p></li>`); }
+  $('log').innerHTML = rows.length ? rows.join('') : `<li class="empty">${active ? 'AI の判断はまだありません。' : '係員の対応はまだありません。'}</li>`;
+}
+function updateFids() {
+  const sim = sims[active], t = sim.t, list = world.flights.filter(f => f.dep > t - 12).sort((a, b) => a.dep - b.dep).slice(0, 9);
+  $('fids').innerHTML = list.map(f => {
+    const fs = sim.flightState(f.id), g = LAY.gates[f.gate]; let st, warn = false;
+    if (fs.closed) { warn = fs.bagsMissed > 0; st = warn ? `出発・積み残し <b>${fs.bagsMissed}</b> 個` : '出発・全量搭載'; }
+    else if (t >= f.dep - P.boardStart) st = `搭乗 <b>${fs.boarded}/${f.paxOut}</b>・搭載 <b>${fs.bagsLoaded}/${fs.bagsIn}</b>`;
+    else st = `預かり <b>${fs.bagsIn}</b> 個・搭載 <b>${fs.bagsLoaded}</b>`;
+    return `<li><span class="num">${hhmm(f.dep)}</span><span class="num">${f.code}</span><span class="g">${g.no}</span><span class="st${warn ? ' warn' : ''}">${st}</span></li>`;
+  }).join('') || '<li>本日の出発便は終了しました。</li>';
+}
+let toastTimer = 0;
+function toast(text, kind) { const el = $('toast'); el.textContent = text; el.dataset.kind = kind || 'info'; el.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('on'), 4200); }
+
+function setMode(m, quiet) {
+  active = m; $('modeBase').setAttribute('aria-checked', m === 0); $('modeAi').setAttribute('aria-checked', m === 1);
+  $('modeBase').tabIndex = m === 0 ? 0 : -1; $('modeAi').tabIndex = m === 1 ? 0 : -1;
+  $('thBase').classList.toggle('on', m === 0); $('thAi').classList.toggle('on', m === 1);
+  $('logTitle').textContent = m ? 'AI の判断ログ' : '運用ログ（従来運用）';
+  $('clockSub').textContent = m ? 'AI 最適化を表示中' : '従来運用を表示中';
+  if (!quiet && !reduceMotion.matches) { const fl = $('worldFlash'); fl.classList.remove('on'); void fl.offsetWidth; fl.classList.add('on'); }
+  logSig = ''; refreshUi(true);
+}
+function refreshUi(force) {
+  $('clock').textContent = hhmm(sims[0].t);
+  updateKpi(); updateCharts(); updateLog(); if (logView === 'fids') updateFids();
+  updateLiveLabels(sims[active], world);
+  if (force) { updateHeat(sims[active], true); updateFlows(sims[active]); updateAircraft(sims[active], world); updateTrack(sims[active]); }
+  for (const [id, on] of [['scnEds', sims[0].scn.edsDown >= 0], ['scnCp', sims[0].cp.some(c => c.limit < 99)], ['scnExtra', world.flights.some(f => f.extra && f.dep > sims[0].t)]]) {
+    const b = $(id); b.dataset.active = on ? '1' : '0'; b.disabled = on || sims[0].t > DAY1 - 130;
+  }
+}
+function setPlaying(p) { playing = p; $('playIcon').setAttribute('d', p ? 'M2 1h3v10H2zM7 1h3v10H7z' : 'M2.5 1l8 5-8 5z'); $('btnPlay').setAttribute('aria-label', p ? '一時停止' : '再生'); }
+function resetSim(until) {
+  world = buildWorld(SEED); sims = [new Sim(world, 0), new Sim(world, 1)];
+  for (let t = DAY0; t < until - 1e-6; t += 0.05) { sims[0].step(0.05); sims[1].step(0.05); }
+  logSig = '';
+}
+// 起動時: 05:00 から最初に見せる時刻まで、画面を固めないように小分けにして計算する
+async function prewarm(until, onProgress) {
+  world = buildWorld(SEED); sims = [new Sim(world, 0), new Sim(world, 1)];
+  let t = DAY0;
+  while (t < until - 1e-6) {
+    const t0 = performance.now();
+    while (t < until - 1e-6 && performance.now() - t0 < 70) { for (let i = 0; i < 20 && t < until - 1e-6; i++, t += 0.1) { sims[0].step(0.1); sims[1].step(0.1); } }   // 起動時だけ 0.1 分刻み
+    onProgress((t - DAY0) / (until - DAY0));
+    await new Promise(r => { const ch = new MessageChannel(); ch.port1.onmessage = () => r(); ch.port2.postMessage(0); });   // タイマーと違い、裏のタブでも間引かれない
+  }
+  logSig = '';
+}
+function placeControls() {       // スマホ幅では、事象・表示の操作と凡例を下のシートへ移す
+  if (isNarrow.matches) { $('sheetSlot').append($('ctlBars'), $('legend')); }
+  else { $('dockSlot').append($('ctlBars')); $('stageWrap').insertBefore($('legend'), $('toast')); }
+  $('legend').open = isNarrow.matches || (wrapEl.clientWidth >= 900 && wrapEl.clientHeight >= 700);      // 舞台が狭いときは凡例をたたんでおく
+}
+function pressGroup(ids, on) { for (const id of ids) $(id).setAttribute('aria-pressed', id === on); }
+
+function bindUi() {
+  buildKpiTable(); placeControls(); isNarrow.addEventListener('change', () => { placeControls(); onResize(); });
+  $('modeBase').addEventListener('click', () => setMode(0)); $('modeAi').addEventListener('click', () => setMode(1));
+  $('modeSwitch').addEventListener('keydown', e => { if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) { e.preventDefault(); setMode(1 - active); (active ? $('modeAi') : $('modeBase')).focus(); } });
+  $('btnPlay').addEventListener('click', () => setPlaying(!playing));
+  for (const id of ['spd1', 'spd2', 'spd4']) $(id).addEventListener('click', e => { speed = +e.currentTarget.dataset.spd; pressGroup(['spd1', 'spd2', 'spd4'], id); if (!playing) setPlaying(true); });
+  $('btnRestart').addEventListener('click', () => { resetSim(DAY0 + 2); setPlaying(true); refreshUi(true); toast('05:00 から計算をやり直します。'); });
+  $('winAll').addEventListener('click', () => { win60 = false; pressGroup(['winAll', 'win60'], 'winAll'); updateKpi(); });
+  $('win60').addEventListener('click', () => { win60 = true; pressGroup(['winAll', 'win60'], 'win60'); updateKpi(); });
+  $('logTabLog').addEventListener('click', () => { logView = 'log'; pressGroup(['logTabLog', 'logTabFids'], 'logTabLog'); $('log').hidden = false; $('fids').hidden = true; });
+  $('logTabFids').addEventListener('click', () => { logView = 'fids'; pressGroup(['logTabLog', 'logTabFids'], 'logTabFids'); $('log').hidden = true; $('fids').hidden = false; updateFids(); });
+  for (const b of $('tabs').querySelectorAll('button')) b.addEventListener('click', () => {
+    $('panel').dataset.tab = b.dataset.tab; for (const o of $('tabs').querySelectorAll('button')) o.setAttribute('aria-selected', o === b);
+    requestAnimationFrame(() => { updateCharts(); });
+  });
+  // ---- シナリオ: 両方のシミュレーションへ同じ時刻に入れる ----
+  $('scnEds').addEventListener('click', () => { for (const s of sims) s.scenarioEds(1, 45); toast('インライン EDS 2 号機を 45 分間停止しました。', 'scn'); goCam('bhs'); refreshUi(); });
+  $('scnCp').addEventListener('click', () => { for (const s of sims) s.scenarioCp(1, 30); toast('保安検査場 B を 30 分間、1 レーンに制限しました。', 'scn'); goCam('sec'); refreshUi(); });
+  $('scnExtra').addEventListener('click', () => {
+    const f = addExtraFlight(world, sims[0].t);
+    if (!f) { toast('オープンスポットが空いていないため、臨時便を追加できません。'); return; }
+    for (const s of sims) s.scenarioExtra(f); toast(`臨時便 ${f.code}（${hhmm(f.dep)} 発、${f.paxOut} 名）を追加しました。`, 'scn'); refreshUi();
+  });
+  // ---- 表示の切替 ----
+  const toggle = (id, fn) => $(id).addEventListener('click', e => { const on = e.currentTarget.getAttribute('aria-pressed') !== 'true'; e.currentTarget.setAttribute('aria-pressed', on); fn(on); });
+  toggle('layHeat', on => { HEAT.mesh.visible = on; if (on) updateHeat(sims[active], true); });
+  toggle('layLabel', on => { labelsOn = on; updateLabelVisibility(); });
+  toggle('layPath', on => { gPath.visible = on; });
+  toggle('layRoof', on => { upperGhostTarget = on ? 1 : 0; if (reduceMotion.matches) { upperGhost = upperGhostTarget; setUpperOpacity(upperGhost); applyGhostToFlows(); } });
+}
+// =====================================================================
+// 74 camera : プリセット・滑らかな移動・自動ツアー（動きを減らす設定では、移動は瞬時、ツアーは無効）
+// =====================================================================
+// 注視点 t と、方位 az（0 = ランドサイド正面、度）・仰角 el（度）・距離 d で決める
+const CAMS = {
+  all: { t: [12, 0, -14], az: -30, el: 37, d: 440, ghost: 0 },
+  lobby: { t: [-52, 12, 60], az: -24, el: 40, d: 118, ghost: 0 },
+  sec: { t: [0, 12, 40], az: 22, el: 46, d: 92, ghost: 0 },
+  bhs: { t: [0, 0, 27], az: -14, el: 50, d: 250, ghost: 1 },
+  ebs: { t: [-122, 2, 26], az: -52, el: 40, d: 120, ghost: 1 },
+  apron: { t: [22, 4, -40], az: 204, el: 21, d: 150, ghost: 0 },
+};
+let camTween = null, camName = 'all', roofUser = false;
+const ease = k => k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+function camPose(name) {
+  const c = CAMS[name], t = new THREE.Vector3(...c.t), az = c.az * Math.PI / 180, el = c.el * Math.PI / 180;
+  // 画面が縦長のときは、対象が収まるようにカメラを引く
+  const asp = camera.aspect || 1.4, k = name === 'all' ? Math.max(1, 1.42 / asp) : Math.max(1, 1.1 / asp), d = c.d * k;
+  const p = new THREE.Vector3(t.x + d * Math.sin(az) * Math.cos(el), t.y + d * Math.sin(el), t.z + d * Math.cos(az) * Math.cos(el)); return { p, t };
+}
+function goCam(name, instant) {
+  const c = CAMS[name]; if (!c) return; camName = name;
+  for (const b of $('camBar').querySelectorAll('[data-cam]')) b.setAttribute('aria-pressed', b.dataset.cam === name);
+  if (!roofUser) { upperGhostTarget = c.ghost; $('layRoof').setAttribute('aria-pressed', c.ghost === 1); }
+  const { p, t } = camPose(name);
+  if (instant || reduceMotion.matches) { camera.position.copy(p); controls.target.copy(t); camTween = null; upperGhost = upperGhostTarget; setUpperOpacity(upperGhost); applyGhostToFlows(); controls.update(); return; }
+  camTween = { p0: camera.position.clone(), t0: controls.target.clone(), p1: p, t1: t, k: 0, dur: 1.5 };
+}
+function stepCamera(dt) {
+  if (camTween) {
+    camTween.k = Math.min(1, camTween.k + dt / camTween.dur); const e = ease(camTween.k);
+    camera.position.lerpVectors(camTween.p0, camTween.p1, e); controls.target.lerpVectors(camTween.t0, camTween.t1, e);
+    if (camTween.k >= 1) camTween = null;
+  }
+  if (Math.abs(upperGhost - upperGhostTarget) > 0.004) { upperGhost += (upperGhostTarget - upperGhost) * Math.min(1, dt * 5); setUpperOpacity(upperGhost); applyGhostToFlows(); }
+  else if (upperGhost !== upperGhostTarget) { upperGhost = upperGhostTarget; setUpperOpacity(upperGhost); applyGhostToFlows(); }
+}
+
+const TOUR = [
+  { cam: 'all', title: '全景', text: '羽田空港をモデルにしたターミナルです。上階を旅客、下階を手荷物が移動します。同じ需要を、従来運用と AI 最適化の 2 通りで同時に計算しています。' },
+  { cam: 'lobby', title: '出発ロビー', text: '旅客は自動手荷物預け機で手荷物を預けます。AI 最適化は、便スケジュールから 20〜50 分先に保安検査場へ着く人数を予測し、検査場へ向かっている人数の実績で補正します。' },
+  { cam: 'sec', title: '保安検査場', text: 'AI 最適化は、予測に基づいてレーンを 20 分前に手配し、サイネージで待ちの短い検査場へ旅客を誘導します。従来運用は、待ちが 55 人を超えた後に増員を要請します。' },
+  { cam: 'bhs', title: '手荷物仕分け', text: '手荷物はインライン EDS を通り、ソーターが便ごとのラテラルへ仕分けます。AI 最適化は RFID でタグを読み、待ち個数の少ない EDS ラインへ手荷物を振り分けます。' },
+  { cam: 'ebs', title: '早期手荷物ストレージ', text: '出発まで時間がある手荷物は EBS で保管します。AI 最適化は、ドーリーがラテラルに着いた後、出発の早い便の手荷物から順に放出します。' },
+  { cam: 'apron', title: 'エプロン', text: 'トーイングトラクターがドーリーを引いて機側へ運びます。AI 最適化は、貨物室を閉める時刻と走行距離から逆算して、最終のドーリーを出す時刻を決めます。' },
+];
+let tourOn = false, tourStep = 0, tourT = 0;
+function showTourStep() {
+  const s = TOUR[tourStep]; $('capStep').textContent = `${tourStep + 1} / ${TOUR.length}`; $('capTitle').textContent = s.title; $('capText').textContent = s.text; $('caption').hidden = false; goCam(s.cam);
+}
+function setTour(on) {
+  if (on && reduceMotion.matches) { toast('動きを減らす設定のため、自動ツアーは使えません。カメラのボタンで各エリアへ移動できます。'); on = false; }
+  tourOn = on; $('btnTour').setAttribute('aria-pressed', on); controls.autoRotate = on; controls.autoRotateSpeed = 0.35;
+  if (on) { tourStep = 0; tourT = 0; showTourStep(); } else $('caption').hidden = true;
+}
+function stepTour(dt) { if (!tourOn) return; tourT += dt; if (tourT > 10.5) { tourT = 0; tourStep = (tourStep + 1) % TOUR.length; showTourStep(); } }
+function bindCamera() {
+  for (const b of $('camBar').querySelectorAll('[data-cam]')) b.addEventListener('click', () => { if (tourOn) setTour(false); goCam(b.dataset.cam); });
+  $('btnTour').addEventListener('click', () => setTour(!tourOn));
+  controls.addEventListener('start', () => { camTween = null; if (tourOn) setTour(false); for (const b of $('camBar').querySelectorAll('[data-cam]')) b.setAttribute('aria-pressed', 'false'); });
+  $('layRoof').addEventListener('click', () => { roofUser = $('layRoof').getAttribute('aria-pressed') === 'true'; });
+  reduceMotion.addEventListener('change', () => { if (reduceMotion.matches && tourOn) setTour(false); });
+}
+// =====================================================================
+// 80 main : 初期化・毎フレームの更新・リサイズ・テーマ追従・非表示時の停止
+// =====================================================================
+function onResize() {
+  const w = Math.max(1, wrapEl.clientWidth), h = Math.max(1, wrapEl.clientHeight);
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1)); renderer.setSize(w, h, false); labelRenderer.setSize(w, h);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  $('caption').style.bottom = ($('dock').offsetHeight + (isNarrow.matches ? 14 : 26)) + 'px';      // ツアーの説明は操作の帯のすぐ上に置く
+  if (sims) updateCharts();
+}
+function applyThemeAll() { applyTheme(); setUpperOpacity(upperGhost); if (sims) { updateCharts(); updateFlows(sims[active]); } }
+
+let rafId = 0, lastNow = 0, uiAcc = 0, lblAcc = 0, dayEndShown = false;
+function frame(now) {
+  rafId = requestAnimationFrame(frame);
+  // rAF の時刻は start() の performance.now() より前になることがあり、差が負になる。負の dt で動かすと停止中の旅客・手荷物の座標が 0/0 で NaN になるため 0 で止める
+  const dtReal = Math.min(0.1, Math.max(0, (now - lastNow) / 1000 || 0.016)); lastNow = now;
+  tick(dtReal);
+}
+function tick(dtReal) {
+  if (playing) {
+    if (sims[0].t < DAY1 - 0.5) {
+      const dtSim = Math.min(dtReal * speed, DAY1 - 0.5 - sims[0].t), n = Math.max(1, Math.ceil(dtSim / 0.05)), h = dtSim / n;
+      if (dtSim > 0) for (let i = 0; i < n; i++) { sims[0].step(h); sims[1].step(h); }
+      dayEndShown = false;
+    } else if (!dayEndShown) { dayEndShown = true; setPlaying(false); toast('24:00 になりました。「05:00 からやり直す」を押すと、最初から計算し直します。'); }
+  }
+  const sim = sims[active];
+  updateFlows(sim); updateHeat(sim, false); updateAircraft(sim, world); updateTrack(sim);
+  stepTour(dtReal); stepCamera(dtReal); controls.update();
+  const cd = camera.position.distanceTo(controls.target); scene.fog.near = cd * (TH.dark ? 1.0 : 1.25) + 260; scene.fog.far = cd * 2.4 + (TH.dark ? 1500 : 2600);   // 注視点までは霞ませない
+  if (!reduceMotion.matches && playing) { waterTex.offset.x += dtReal * 0.004; waterTex.offset.y += dtReal * 0.0025; }
+  if ((lblAcc += dtReal) > 0.2) { lblAcc = 0; updateLabelVisibility(); gRoof.visible = cd > 210; }
+  if ((uiAcc += dtReal) > 0.4) { uiAcc = 0; refreshUi(false); }
+  renderer.render(scene, camera); labelRenderer.render(scene, camera);
+}
+function start() { if (!rafId) { lastNow = performance.now(); rafId = requestAnimationFrame(frame); } }
+function stop() { if (rafId) { cancelAnimationFrame(rafId); rafId = 0; } }
+
+async function init() {
+  const boot = $('boot'), bar = $('bootBar'), msg = $('bootMsg');
+  msg.textContent = `05:00 から ${hhmm(START_AT)} までの運用を、従来運用と AI 最適化の 2 通りで計算しています`;
+  await prewarm(START_AT, k => { bar.style.transform = `scaleX(${k.toFixed(3)})`; });
+  buildSite(); buildLower(); buildUpper(); buildApron(); buildFlows(); buildHeat();
+  applyTheme(); setUpperOpacity(0);
+  bindUi(); bindCamera(); onResize(); goCam('all', true); setMode(1, true);
+  new ResizeObserver(onResize).observe(wrapEl);
+  // テーマ: OS の設定の変化と、ビューアが付ける data-theme 属性の変化の両方に追従する
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyThemeAll);
+  new MutationObserver(applyThemeAll).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); else start(); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (sims) updateCharts(); });
+  refreshUi(true); updateLabelVisibility();
+  renderer.render(scene, camera); labelRenderer.render(scene, camera);
+  boot.hidden = true;
+  if (!document.hidden) start();
+}
+window.__hf = { THREE, scene, camera, renderer, controls, tick, goCam, get sims() { return sims; }, get world() { return world; }, get active() { return active; } };   // 確認用（コンソールから状態を見る）
+init().catch(err => { console.error(err); $('boot').hidden = false; $('bootMsg').textContent = '3D の初期化に失敗しました: ' + (err && err.message ? err.message : err); });
+</script>

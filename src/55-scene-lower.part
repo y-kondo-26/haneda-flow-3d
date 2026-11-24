@@ -1,24 +1,26 @@
 // =====================================================================
 // 55 scene (下階) : 手荷物ホール（コレクター → インライン EDS → 高速仕分け機 → EBS / メイクアップ）と到着ロビー
 // =====================================================================
-const mFloorLo = M('s-bldg2'), mLoop = M('s-edge'), mRack = M('s-edge');
-const mPath = M('bag', { transparent: true, opacity: 0.5, depthWrite: false }, THREE.MeshBasicMaterial); mPath.userData.noShadow = true;
+// 下階は上階より一段暗い色の模型にして、階の違いを明度で見分ける
+const mFloorLo = M('s-lofloor'), mLoop = M('s-lobelt'), mRack = M('s-lomachine'), mLoWall = M('s-lowall'), mLoBelt = M('s-lobelt'), mLoMachine = M('s-lomachine');
+const mPath = M('bag', { transparent: true, opacity: 0.3, depthWrite: false }, THREE.MeshBasicMaterial); mPath.userData.noShadow = true;
 const gPath = new THREE.Group(); gLower.add(gPath);
 let edsLights = null;
 
 function buildLower() {
   const { X0, X1, ZA, ZL } = LAY, W = X1 - X0, Dp = ZL - ZA, cz = (ZA + ZL) / 2, lp = BHS.loop;
   flat(mFloorLo, W + 4, Dp + 2, 0, 0.05, cz);
-  box(mBldg, 0.8, 3.0, Dp, X0, 1.5, cz); box(mBldg, 0.8, 3.0, Dp, X1, 1.5, cz); box(mBldg, W, 3.0, 0.8, 0, 1.5, ZL);
-  for (let x = -154; x <= 154; x += 30.8) for (const z of [-11.5, 56, 81]) cyl(mBldg, 0.75, YU - 0.5, x, (YU - 0.5) / 2, z, 10);
+  box(mLoWall, 0.8, 3.0, Dp, X0, 1.5, cz); box(mLoWall, 0.8, 3.0, Dp, X1, 1.5, cz); box(mLoWall, X1 + 62, 3.0, 0.8, (X1 - 62) / 2, 1.5, ZL); box(mLoWall, -88 - X0, 3.0, 0.8, (X0 - 88) / 2, 1.5, ZL);   // 到着ロビーの出口（x = -88〜-62）を空ける
+  for (let x = -154; x <= 154; x += 30.8) for (const z of [56, 81]) cyl(mLoWall, 0.75, YU - 0.5, x, (YU - 0.5) / 2, z, 10);
+  for (let x = -157; x <= 151; x += 28) cyl(mLoWall, 0.75, YU - 0.5, x, (YU - 0.5) / 2, -11.5, 10);          // エアサイドの列は、ドーリーの出入り口を避けた位置に立てる
   // チェックイン島からのシュートとコレクター（東行き・西行きの 2 本）
-  for (const is of LAY.islands) { cyl(mMachine, 1.7, YU - 0.6, is.x, (YU - 0.6) / 2 + 0.1, 52, 14); strip(mBelt, is.x, 52, is.x, 49.3, 1.2, 0.2, 0.55); }
-  strip(mBelt, -127, 50.7, 127, 50.7, 1.15, 0.2, 0.55); strip(mBelt, -127, 49.3, 127, 49.3, 1.15, 0.2, 0.55);
+  for (const is of LAY.islands) { cyl(mLoMachine, 1.7, YU - 0.6, is.x, (YU - 0.6) / 2 + 0.1, 52, 14); strip(mLoBelt, is.x, 52, is.x, 49.3, 1.2, 0.2, 0.55); }
+  strip(mLoBelt, -127, 50.7, 127, 50.7, 1.15, 0.2, 0.55); strip(mLoBelt, -127, 49.3, 127, 49.3, 1.15, 0.2, 0.55);
   // インライン EDS（3 ライン）
   BHS.edsX.forEach((ex, l) => {
-    strip(mBelt, ex, 49.3, ex, lp.zc + lp.r, 1.2, 0.2, 0.55);
-    box(mMachine, 3.4, 3.0, 6.4, ex, 1.7, 43); box(mEdge, 3.6, 0.5, 2.2, ex, 3.3, 43); box(mEdge, 3.5, 3.1, 0.5, ex, 1.7, 45.4); box(mEdge, 3.5, 3.1, 0.5, ex, 1.7, 40.6);
-    strip(mBelt, ex + 0.6, 38.4, ex + 7, 38.4, 1.1, 0.2, 0.5); box(mBldg, 3, 1.1, 1.6, ex + 9.2, 0.55, 37.6);          // 画像判定・開披検査の支線と作業台
+    strip(mLoBelt, ex, 49.3, ex, lp.zc + lp.r, 1.2, 0.2, 0.55);
+    box(mLoMachine, 3.4, 3.0, 6.4, ex, 1.7, 43); box(mEdge, 3.6, 0.5, 2.2, ex, 3.3, 43); box(mEdge, 3.5, 3.1, 0.5, ex, 1.7, 45.4); box(mEdge, 3.5, 3.1, 0.5, ex, 1.7, 40.6);
+    strip(mLoBelt, ex + 0.6, 38.4, ex + 7, 38.4, 1.1, 0.2, 0.5); box(mLoWall, 3, 1.1, 1.6, ex + 9.2, 0.55, 37.6);          // 画像判定・開披検査の支線と作業台
     addLabel(`インライン EDS <span class="num">${l + 1}</span> 号機<small data-live="eds${l}"></small>`, ex, 7, 43, l === 1 ? 'major' : '', l === 1 ? 1 : 2);
   });
   // 高速仕分け機（ループ状のソーター）
@@ -28,39 +30,39 @@ function buildLower() {
   addLabel('高速仕分け機（ソーター）<small data-live="loop"></small>', 30, 6.5, lp.zc, 'major', 1);
   // メイクアップ: 便ごとのラテラル 12 本
   BHS.lateralX.forEach((lx, k) => {
-    strip(mBelt, lx, lp.zc - lp.r, lx, BHS.zLat0, 1.3, 0.2, 0.6); box(mBldg, 3.4, 0.45, BHS.zLat0 - BHS.zLat1 + 1.5, lx, 0.25, (BHS.zLat0 + BHS.zLat1) / 2 - 0.2);
-    box(mEdge, 0.2, 0.9, BHS.zLat0 - BHS.zLat1 + 1.5, lx - 1.75, 0.45, (BHS.zLat0 + BHS.zLat1) / 2 - 0.2); box(mEdge, 0.2, 0.9, BHS.zLat0 - BHS.zLat1 + 1.5, lx + 1.75, 0.45, (BHS.zLat0 + BHS.zLat1) / 2 - 0.2);
+    strip(mLoBelt, lx, lp.zc - lp.r, lx, BHS.zLat0, 1.3, 0.2, 0.6); box(mLoWall, 3.7, 0.2, BHS.zLat0 - BHS.zLat1 + 2, lx, 0.1, (BHS.zLat0 + BHS.zLat1) / 2 - 0.4);
+    box(mEdge, 0.16, 0.6, BHS.zLat0 - BHS.zLat1 + 2, lx - 1.93, 0.3, (BHS.zLat0 + BHS.zLat1) / 2 - 0.4); box(mEdge, 0.16, 0.6, BHS.zLat0 - BHS.zLat1 + 2, lx + 1.93, 0.3, (BHS.zLat0 + BHS.zLat1) / 2 - 0.4);
     addLabel(`<span class="num">${k + 1}</span><small data-live="lat${k}"></small>`, lx, 3.6, 0.5, '', 3);
   });
   addLabel('メイクアップエリア<small>便ごとのラテラル 12 本</small>', -30, 6, 9, 'major', 1);
   // 早期手荷物ストレージ（EBS）: 4 段のラック
   const e = BHS.ebs, c0 = { x: 0, y: 0, z: 0 };
   for (let r = 0; r < e.rows; r++) { ebsCell(r * e.cols, c0); const z = c0.z;
-    for (let lv = 0; lv < e.levels; lv++) box(mRack, e.x1 - e.x0 - 3, 0.12, 1.5, (e.x0 + e.x1) / 2, 0.22 + lv * 1.7, z);
+    for (let lv = 0; lv < e.levels; lv++) for (const dz of [-0.62, 0.62]) box(mRack, e.x1 - e.x0 - 3, 0.1, 0.14, (e.x0 + e.x1) / 2, 0.22 + lv * 1.7, z + dz);     // 棚はレールだけにして、保管中の手荷物が見えるようにする
     for (let x = e.x0 + 1.5; x <= e.x1 - 1.4; x += 9.4) box(mRack, 0.22, e.levels * 1.7, 0.22, x, e.levels * 0.85, z - 0.8); }
-  strip(mBelt, -lp.a - lp.r, lp.zc, e.x0 + 2, lp.zc, 1.3, 0.2, 0.55); box(mMachine, 2.2, 7.4, 2.2, e.x1 - 1, 3.7, lp.zc);
-  addLabel('早期手荷物ストレージ（EBS）<small data-live="ebs"></small>', (e.x0 + e.x1) / 2, 10.5, 30, 'major', 1);
+  strip(mLoBelt, -lp.a - lp.r, lp.zc, e.x0 + 2, lp.zc, 1.3, 0.2, 0.55); box(mLoMachine, 2.2, 7.4, 2.2, e.x1 - 1, 3.7, lp.zc);
+  addLabel('早期手荷物ストレージ（EBS）<small data-live="ebs"></small>', (e.x0 + e.x1) / 2, 12.5, 30, 'major', 1);
   // 手作業コード入力（MES）と、従来運用の仮置き場、乗り継ぎ手荷物の投入口
-  strip(mBelt, lp.a + lp.r, lp.zc, BHS.mes.x - 2, lp.zc, 1.3, 0.2, 0.55); box(mBldg, 3.2, 1.0, 1.4, BHS.mes.x + 1.6, 0.5, lp.zc - 2.2); box(mBldg, 3.2, 1.0, 1.4, BHS.mes.x + 1.6, 0.5, lp.zc + 2.2);
+  strip(mLoBelt, lp.a + lp.r, lp.zc, BHS.mes.x - 2, lp.zc, 1.3, 0.2, 0.55); box(mLoWall, 3.2, 1.0, 1.4, BHS.mes.x + 1.6, 0.5, lp.zc - 2.2); box(mLoWall, 3.2, 1.0, 1.4, BHS.mes.x + 1.6, 0.5, lp.zc + 2.2);
   addLabel('手作業コード入力<small data-live="mes"></small>', BHS.mes.x + 4, 5, lp.zc, '', 2);
   const h = BHS.hold; for (const [a, b, c2, d2] of [[h.x0, h.z0, h.x1, h.z0], [h.x1, h.z0, h.x1, h.z1], [h.x1, h.z1, h.x0, h.z1], [h.x0, h.z1, h.x0, h.z0]]) strip(mEdge, a, b, c2, d2, 0.35, 0.08, 0.06);
   addLabel('仮置き場（手作業）<small data-live="hold"></small>', (h.x0 + h.x1) / 2, 4, h.z1, '', 2);
-  strip(mBelt, BHS.xferIn.x + 7, BHS.xferIn.z + 8, BHS.xferIn.x, BHS.xferIn.z + 8, 1.2, 0.2, 0.55); strip(mBelt, BHS.xferIn.x, BHS.xferIn.z + 8, BHS.xferIn.x, BHS.xferIn.z, 1.2, 0.2, 0.55);
-  strip(mBelt, BHS.xferIn.x, BHS.xferIn.z, lp.a - 4, lp.zc + lp.r + 0.6, 1.2, 0.2, 0.55);
+  strip(mLoBelt, BHS.xferIn.x + 7, BHS.xferIn.z + 8, BHS.xferIn.x, BHS.xferIn.z + 8, 1.2, 0.2, 0.55); strip(mLoBelt, BHS.xferIn.x, BHS.xferIn.z + 8, BHS.xferIn.x, BHS.xferIn.z, 1.2, 0.2, 0.55);
+  strip(mLoBelt, BHS.xferIn.x, BHS.xferIn.z, lp.a - 4, lp.zc + lp.r + 0.6, 1.2, 0.2, 0.55);
   addLabel('乗り継ぎ手荷物の投入口', BHS.xferIn.x + 4, 4.5, BHS.xferIn.z + 9, '', 3);
   // 到着: 取り降ろしベルトとターンテーブル（バゲージクレーム）
-  strip(mBelt, -169, -5, -169, 62, 1.2, 0.2, 0.55); strip(mBelt, -169, 62, BHS.claim[1].x, 62, 1.2, 0.2, 0.55);
+  strip(mLoBelt, -169, -5, -169, 62, 1.2, 0.2, 0.55); strip(mLoBelt, -169, 62, BHS.claim[1].x, 62, 1.2, 0.2, 0.55);
   for (const c of BHS.claim) {
-    strip(mBelt, c.x, 62, c.x, c.z - 3.6, 1.2, 0.2, 0.55);
+    strip(mLoBelt, c.x, 62, c.x, c.z - 3.6, 1.2, 0.2, 0.55);
     const ring = new THREE.RingGeometry(0.72, 1, 40).rotateX(-Math.PI / 2); ring.scale(7.4, 1, 4.6); ring.translate(c.x, 0.82, c.z); addGeo(mLoop, ring);
-    const base = new THREE.CylinderGeometry(1, 1, 0.8, 40); base.scale(7.4, 1, 4.6); base.translate(c.x, 0.4, c.z); addGeo(mBldg, base);
+    const base = new THREE.CylinderGeometry(1, 1, 0.8, 40); base.scale(7.4, 1, 4.6); base.translate(c.x, 0.4, c.z); addGeo(mLoWall, base);
   }
   addLabel('バゲージクレーム<small>到着ターンテーブル 2 基</small>', -75, 6, 78, 'major', 1);
-  box(mBldg, 0.6, 3.2, 22, -22, 1.6, 73); box(mGlass, 150, 3.4, 0.3, -97, 1.9, 61);                 // 到着ロビーの仕切り
+  box(mLoWall, 0.6, 3.2, 22, -22, 1.6, 73); box(mGlass, 150, 3.4, 0.3, -97, 1.9, 61);                 // 到着ロビーの仕切り
   // 構内道路の標示（ドーリーの走行路）
   for (let x = -160; x < 160; x += 7) strip(mMark, x, -5, x + 3.5, -5, 0.3, 0.08);
   const ms = flush(gLower, { cast: true, receive: true });
-  for (const m of ms) if (m.material === mFloorLo || m.material === mBelt || m.material === mLoop) m.castShadow = false;
+  for (const m of ms) if (m.material === mFloorLo || m.material === mLoBelt || m.material === mLoop) m.castShadow = false;
   // 手荷物の主な経路（表示の切替が可能）
   for (const is of LAY.islands) strip(mPath, is.x, 52, is.x, 50, 0.5, 1.02);
   strip(mPath, -125, 50, 125, 50, 0.5, 1.02);
@@ -72,7 +74,7 @@ function buildLower() {
   strip(mPath, -170, BHS.zRoad, 206, BHS.zRoad, 0.4, 0.12);
   flush(gPath, { cast: false, receive: false, order: 1 });
   // EDS の稼働灯
-  edsLights = new THREE.InstancedMesh(new THREE.BoxGeometry(3.7, 0.3, 2.3), new THREE.MeshBasicMaterial(), 3);
-  const m4 = new THREE.Matrix4(); BHS.edsX.forEach((ex, l) => { m4.makeTranslation(ex, 3.75, 43); edsLights.setMatrixAt(l, m4); edsLights.setColorAt(l, new THREE.Color(0x22aa77)); });
+  edsLights = new THREE.InstancedMesh(new THREE.BoxGeometry(3.5, 0.28, 0.45), new THREE.MeshBasicMaterial(), 3);
+  const m4 = new THREE.Matrix4(); BHS.edsX.forEach((ex, l) => { m4.makeTranslation(ex, 3.45, 46.1); edsLights.setMatrixAt(l, m4); edsLights.setColorAt(l, new THREE.Color(0x22aa77)); });
   gLower.add(edsLights);
 }

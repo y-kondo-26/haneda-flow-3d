@@ -32,7 +32,7 @@ Sim.prototype.closeFlight = function (f, fs) {
   if (fs.train) { const tug = fs.train; for (const b of tug.bags) b.st = B.GONE; tug.bags = []; tug.st = 0; tug.f = null; fs.train = null; }
   this.tugReq = this.tugReq.filter(r => r.f !== f);
   for (const b of this.bags) if (b.f === f && b.st !== B.GONE && b.st < B.ARR) { b.missed = true; b.c = 2; }
-  if (miss >= 5) this.addLog('ops', `${f.code} 便（${hhmm(f.dep)} 発）は手荷物 ${miss} 個を搭載できずに出発しました。`);
+  if (miss >= 5) this.addLog('scn', `${f.code} 便（${hhmm(f.dep)} 発）は、手荷物 ${miss} 個を搭載できずに出発しました。`);
 };
 Sim.prototype.spawnArrivalBags = function (f, fs) {
   const n = Math.min(100, Math.round(f.paxIn * 0.36)), sp = standSpot(f.gate);
@@ -54,10 +54,15 @@ Sim.prototype.rerouteEds = function (line) {         // コレクター上にあ
   }
 };
 Sim.prototype.scenarioEds = function (line, dur) {
-  this.scn.edsDown = line; this.scn.edsUntil = this.t + dur; this.scn.edsSwitchAt = this.t + (this.mode ? 0 : P.base.edsSwitch);
+  const lag = this.mode ? P.ai.edsDetect : P.base.edsSwitch;
+  this.scn.edsDown = line; this.scn.edsUntil = this.t + dur; this.scn.edsSwitchAt = this.t + lag;
   this.addLog('scn', `インライン EDS ${line + 1} 号機が停止しました（復旧見込み ${hhmm(this.t + dur)}）。`);
-  if (this.mode === 1) { this.rerouteEds(line); this.addLog('ai', `EDS ${line + 1} 号機の停止を検知しました。コレクターを流れる手荷物を、残る 2 ラインのうち待ち個数が少ないラインへ振り分けます。滞留中は出発の早い便の手荷物を先に通します。`); }
-  else { setTimeoutSim(this, P.base.edsSwitch, () => { if (this.scn.edsDown === line) { this.rerouteEds(line); this.addLog('ops', `係員が迂回経路へ切り替えました。${line + 1} 号機へ向かう手荷物は、固定の迂回先である ${(line + 1) % 3 + 1} 号機へ流れます。`); } }); }
+  setTimeoutSim(this, lag, () => {
+    if (this.scn.edsDown !== line) return;
+    this.rerouteEds(line);
+    if (this.mode === 1) this.addLog('ai', `EDS ${line + 1} 号機の停止を検知しました。コレクターを流れる手荷物を、残る 2 ラインのうち待ち個数が少ないラインへ振り分けます。滞留中は出発の早い便の手荷物を先に通します。`);
+    else this.addLog('ops', `係員が迂回経路へ切り替えました。${line + 1} 号機へ向かう手荷物は、固定の迂回先である ${(line + 1) % 3 + 1} 号機へ流れます。`);
+  });
 };
 Sim.prototype.scenarioCp = function (c, dur) {
   const cp = this.cp[c]; cp.limit = 1; cp.limitUntil = this.t + dur;

@@ -85,15 +85,16 @@ Sim.prototype.controlSecurity = function () {
     const cp = this.cp[c], nm = LAY.cps[c].name;
     if (cp.limit < 99 && t >= cp.limitUntil) { cp.limit = 99; this.addLog('scn', `保安検査場 ${nm} の検査機器が復旧しました。`); }
     while (cp.plan.length && cp.plan[0].t <= t) { const pl = cp.plan.shift(); if (pl.d) cp.extra += pl.d; else cp.target = pl.n; }
-    if (this.mode === 0) {
-      const base = this.roster(t, c), pend = cp.plan.length;
-      if (cp.q.length > 55 && t - cp.lastReq >= 10 && base + cp.extra + pend < LAY.cpLanes) {
-        cp.lastReq = t; cp.plan.push({ t: t + P.laneLead, d: 1 });
-        this.addLog('ops', `保安検査場 ${nm} の待ちが ${cp.q.length} 人になったため、係員が増員を要請しました。${hhmm(t + P.laneLead)} にレーンを 1 本増やします。`);
-      }
-      if (cp.q.length < 6) { if (t - cp.calmSince > 25 && cp.extra > 0) { cp.extra--; cp.calmSince = t; } } else cp.calmSince = t;
-      cp.open = clamp(base + cp.extra, 1, LAY.cpLanes);
-    } else cp.open = cp.target;
+    // 待ちが伸びたときの増員要請（指示から実施まで 20 分）。従来運用はこれだけで対応し、AI 最適化も予測を外したときの保険として使う
+    const base = this.mode === 0 ? this.roster(t, c) : cp.target, pend = cp.plan.filter(pl => pl.d).length;
+    if (cp.q.length > 55 && t - cp.lastCall >= 10 && base + cp.extra + pend < LAY.cpLanes) {
+      cp.lastCall = t; cp.plan.push({ t: t + P.laneLead, d: 1 }); cp.plan.sort((a, b) => a.t - b.t);
+      this.addLog(this.mode ? 'ai' : 'ops', this.mode
+        ? `保安検査場 ${nm} の待ちが予測を超えて ${cp.q.length} 人になったため、応援の要員を要請しました。${hhmm(t + P.laneLead)} にレーンを 1 本増やします。`
+        : `保安検査場 ${nm} の待ちが ${cp.q.length} 人になったため、係員が増員を要請しました。${hhmm(t + P.laneLead)} にレーンを 1 本増やします。`);
+    }
+    if (cp.q.length < 6) { if (t - cp.calmSince > 25 && cp.extra > 0) { cp.extra--; cp.calmSince = t; } } else cp.calmSince = t;
+    cp.open = clamp(base + cp.extra, 1, LAY.cpLanes);
   }
   if (this.mode === 1 && Math.floor(t) % 5 === 0) this.aiPlanLanes();
 };
@@ -107,7 +108,9 @@ Sim.prototype.aiPlanLanes = function () {
   let R = 0, Q = 0, cap = 0;
   for (let c = 0; c < 3; c++) { R += rate[c]; const cp = this.cp[c]; Q += cp.q.length + cp.enroute; cap += Math.min(cp.open, cp.limit) / P.secSvcMean; }
   const backlog = Math.max(0, Q + (near[0] + near[1] + near[2] - cap) * lead);
-  let N = clamp(Math.ceil(R * P.secSvcMean * P.ai.margin + backlog / 26), 3, 15);
+  // 要員の上限: 従来運用の人員計画（その時間帯の合計）+ 応援枠。AI は人数を増やさず、時刻と配置を変える
+  const budget = this.roster(tEff, 0) + this.roster(tEff, 1) + this.roster(tEff, 2) + P.ai.extraLanes;
+  let N = clamp(Math.ceil(R * P.secSvcMean * P.ai.margin + backlog / 26), 3, Math.min(15, budget));
   const n = [1, 1, 1], lim = this.cp.map(c => c.limit < 99 ? c.limit : LAY.cpLanes);
   for (let k = 3; k < N; k++) {
     let bi = -1, bv = -1;
@@ -115,12 +118,12 @@ Sim.prototype.aiPlanLanes = function () {
     if (bi < 0) break; n[bi]++;
   }
   for (let c = 0; c < 3; c++) {
-    const cp = this.cp[c], last = cp.plan.length ? cp.plan[cp.plan.length - 1].n : cp.target;
+    const cp = this.cp[c]; let last = cp.target; for (const pl of cp.plan) if (pl.n !== undefined) last = pl.n;
     let want = n[c];
     if (want < last) { cp.downN = (cp.downN || 0) + 1; if (t - cp.lastReq < 15 || cp.downN < 3) continue; want = last - 1; cp.downN = 0; } else cp.downN = 0;   // 減らすのは 3 回続けて余裕があるときだけ
     if (want === last) continue;
     if (want > last) cp.lastReq = t;
-    cp.plan.push({ t: tEff, n: want });
+    cp.plan.push({ t: tEff, n: want }); cp.plan.sort((a, b) => a.t - b.t);
     const why = fault && cp.limit >= 99 ? `機器が故障した検査場の要員を移すためです。`
       : `${hhmm(tEff)} からの 30 分間に 1 時間あたり ${Math.round(rate[c] * 60 / 10) * 10} 人が到着すると予測したためです。`;
     this.addLog('ai', `保安検査場 ${LAY.cps[c].name} のレーンを ${hhmm(tEff)} に ${last} 本から ${want} 本へ${want > last ? '増やします' : '減らします'}。${why}`);

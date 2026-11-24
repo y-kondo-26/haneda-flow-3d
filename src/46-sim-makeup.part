@@ -46,13 +46,18 @@ Sim.prototype.stepMakeup = function (dt) {
     }
     if (!fs.train && !fs.req && !fs.finalSent && (Lt.f < 0 || Lt.f === f.id)) {
       const full = this.ebs.n > this.ebs.cells.length * 0.82;
-      const want = ai ? (t >= f.dep - 76 || (t >= f.dep - 118 && ((fs.ebsN || 0) >= 96 || (full && (fs.ebsN || 0) >= 30)))) : t >= f.dep - 97;
+      // AI 最適化: 予約数から見込んだ個数で、積み付けに要る時間を逆算して最初のドーリーを呼ぶ
+      const expBags = f.paxOut * 0.73 + f.xb.length, lead = Math.max(76, 30 + expBags / P.loadRate * 1.25 + 8 * Math.ceil(expBags / P.trainCap));
+      const want = ai ? (t >= f.dep - lead || (t >= f.dep - 118 && ((fs.ebsN || 0) >= 96 || (full && (fs.ebsN || 0) >= 30)))) : t >= f.dep - 97;
       if (want) { fs.req = true; this.tugReq.push({ f, t }); }
     }
     const tug = fs.train;
     if (tug && tug.st === 2) {
       // 積み付け
-      fs.credit2 = Math.min((fs.credit2 || 0) + P.loadRate * dt, 3);
+      // AI 最適化: 残りの個数が締切に間に合わない見込みのときは、手の空いた要員を回して積み付けを速める
+      let rate = P.loadRate;
+      if (ai) { const left = fs.bagsIn - fs.bagsLoaded - fs.onWay - tug.bags.length - fs.lostN, tLeft = f.dep - 24 - t; if (left > 20 && left / Math.max(2, tLeft) > P.loadRate * 0.8) { rate = P.loadRate * 1.5; if (!fs.boosted) { fs.boosted = true; this.addLog('ai', `${f.code} 便のラテラル ${k + 1} に積み付けの要員を追加しました。残り ${left} 個が、最終のドーリーの時刻に間に合わない見込みのためです。`); } } }
+      fs.credit2 = Math.min((fs.credit2 || 0) + rate * dt, 3);
       while (fs.credit2 >= 1 && Lt.slots.length && tug.bags.length < P.trainCap) { fs.credit2--; const b = Lt.slots.shift(); Lt.n--; b.st = B.TRAIN; b.tug = tug; b.slot = tug.bags.length; tug.bags.push(b); }
       for (let i = 0; i < Lt.slots.length; i++) { const b = Lt.slots[i]; latSlot(k, i, _c); b.x += (_c.x - b.x) * Math.min(1, dt * 10); b.z += (_c.z - b.z) * Math.min(1, dt * 10); b.y = 0.6; }
       // 出発の判断
@@ -72,7 +77,7 @@ Sim.prototype.stepMakeup = function (dt) {
       if (leave && (n > 0 || final)) {
         fs.trainsSent++; fs.onWay += n; fs.train = null; if (final) fs.finalSent = true;
         const sp = standSpot(f.gate); tug.st = 3; setTugPath(tug, [[tug.x, tug.z], [tug.x - 5, -5], [tug.x - 5, BHS.zRoad], [sp[0], BHS.zRoad], sp]);
-        if (final && ai && n > 0 && t > f.dep - 24) this.addLog('ai', `${f.code} 便の最終のドーリーを ${hhmm(t)} に出しました。追跡中の手荷物 ${n} 個が届くまで待ち、搭載に間に合う時刻を逆算したためです。`);
+        if (final && ai && n > 0 && t > f.dep - 24) this.addLog('ai', `${f.code} 便の最終のドーリーを ${hhmm(t)} に出しました（手荷物 ${n} 個）。貨物室を閉める ${hhmm(f.dep - P.holdClose)} までに搭載できる最終の時刻を、走行距離と個数から逆算したためです。`);
       }
     }
   }
@@ -101,7 +106,7 @@ Sim.prototype.stepMakeup = function (dt) {
         tug.credit--; const b = tug.bags.pop(); b.st = B.GONE; fs.onWay--;
         if (t <= tug.f.dep - P.holdClose + 0.01 && !fs.closed) { fs.bagsLoaded++; this.kpi.loaded++; this.kpi.loadSeries[this.bin15()]++; this.kpi.loadPerMin[Math.min(DAY1, t | 0)]++; } else fs.lostN++;
       }
-      if (!tug.bags.length) { tug.st = 5; tug.f = null; const px = -158 + tug.id * 5.5; setTugPath(tug, [[tug.x, tug.z], [tug.x, BHS.zRoad], [px, BHS.zRoad], [px, -9]]); }
+      if (!tug.bags.length) { tug.st = 5; tug.f = null; const px = -160 + tug.id * 4.6; setTugPath(tug, [[tug.x, tug.z], [tug.x, BHS.zRoad], [px, BHS.zRoad], [px, -9]]); }
     } else if (tug.st === 6) {                        // 到着手荷物をベルトへ降ろす
       tug.credit = Math.min((tug.credit || 0) + 14 * dt, 3);
       while (tug.credit >= 1 && tug.bags.length) {
